@@ -29,10 +29,10 @@ flowchart TB
         Submit["submit_action\n(Buttons, approvals,\nstate transitions)"]
     end
 
-    subgraph WebMCPLayer["📡 WebMCP Protocol Layer (Chrome EPP)"]
-        Declarative["Declarative API\n(HTML form-based\nstructured actions)"]
-        Imperative["Imperative API\n(JS-executed\ndynamic interactions)"]
-        ToolDiscovery["Tool Discovery\n(Site-exposed structured\ntool definitions)"]
+    subgraph APILayer["📡 Native API Integration Layer"]
+        APIConnectors["API Connectors\n(REST / GraphQL\nDirect Integration)"]
+        SchemaDiscovery["API Schema Discovery\n(OpenAPI / Swagger\nEndpoint Detection)"]
+        ResponseNorm["Response Normalizer\n(Structured Data\nTransformation)"]
     end
 
     subgraph BrowserEngine["🌐 Browser Automation (J-browser-agents)"]
@@ -69,19 +69,19 @@ flowchart TB
     %% Tools → Security
     Navigate & Extract & FillForm & Submit -->|"All actions pass through"| SecurityLayer
 
-    %% Security → WebMCP / Browser
+    %% Security → API / Browser
     AuthDelegation -->|"Inject auth tokens"| Headless
     URLAllowlist -->|"Validate target URL"| Headless
     ApprovalGate -->|"Request user confirmation\n(destructive actions)"| Employee
     ApprovalGate -->|"Approved action"| Headless
     AuditLog -.->|"Log every action"| SecurityLayer
 
-    %% WebMCP integration
-    SecurityLayer -->|"Prefer structured path\nwhen available"| WebMCPLayer
-    SecurityLayer -->|"Fallback: raw DOM"| Headless
-    ToolDiscovery -->|"Discover site-exposed\ntools & schemas"| Planner
-    Declarative -->|"Form submission\nvia HTML actions"| Headless
-    Imperative -->|"JS execution\nfor complex flows"| Headless
+    %% API integration
+    SecurityLayer -->|"Prefer API path\nwhen available"| APILayer
+    SecurityLayer -->|"Fallback: DOM automation"| Headless
+    SchemaDiscovery -->|"Discover available\nAPI endpoints"| Planner
+    APIConnectors -->|"REST/GraphQL calls"| SessionMgr
+    ResponseNorm -->|"Structured responses"| Planner
 
     %% Browser internals
     Headless <--> DOMParser
@@ -106,7 +106,7 @@ flowchart TB
     classDef agentStyle fill:#F3E5F5,stroke:#7B1FA2,color:#4A148C
     classDef securityStyle fill:#FFEBEE,stroke:#C62828,color:#B71C1C
     classDef toolStyle fill:#E8F5E9,stroke:#2E7D32,color:#1B5E20
-    classDef webmcpStyle fill:#E8EAF6,stroke:#283593,color:#1A237E
+    classDef apiStyle fill:#E8EAF6,stroke:#283593,color:#1A237E
     classDef browserStyle fill:#FFF3E0,stroke:#E65100,color:#BF360C
     classDef internalStyle fill:#F1F8E9,stroke:#558B2F,color:#33691E
     classDef publicStyle fill:#FFF8E1,stroke:#F9A825,color:#F57F17
@@ -115,7 +115,7 @@ flowchart TB
     class Planner,Memory,Router agentStyle
     class AuthDelegation,URLAllowlist,ApprovalGate,AuditLog securityStyle
     class Navigate,Extract,FillForm,Submit toolStyle
-    class Declarative,Imperative,ToolDiscovery webmcpStyle
+    class APIConnectors,SchemaDiscovery,ResponseNorm apiStyle
     class Headless,DOMParser,SessionMgr browserStyle
     class ServiceNow,Jira,Dashboards internalStyle
     class InvestorPages,ECommerce,TravelBooking publicStyle
@@ -129,15 +129,15 @@ flowchart TB
 | **Agent Orchestrator** | Copilot SDK plans multi-step workflows, tracks context, and routes tool calls |
 | **Security Boundary** | Auth delegation (SSO/token proxy), URL allowlisting, human-in-the-loop approval gates, and full audit logging |
 | **Agent Tools** | Four core tools — `navigate_page`, `extract_content`, `fill_form`, `submit_action` |
-| **WebMCP Protocol** | Chrome's [WebMCP](https://developer.chrome.com/blog/webmcp-epp) standard — sites expose structured tools via **Declarative API** (HTML forms) and **Imperative API** (JavaScript), enabling faster and more reliable agent workflows than raw DOM manipulation |
+| **Native API Integration** | Direct REST/GraphQL integration with target applications — the agent discovers and calls native APIs (OpenAPI/Swagger) exposed by enterprise apps, enabling faster and more reliable workflows than DOM manipulation |
 | **Browser Automation** | J-browser-agents manages headless browser instances, DOM parsing, and session/cookie handling |
 | **Target Apps** | Internal enterprise apps (ServiceNow, Jira, dashboards) and public/external sites (investor pages, e-commerce, travel portals) |
 
-## WebMCP Integration
+## Native API Integration
 
 ```mermaid
 flowchart LR
-    subgraph Traditional["🔧 Traditional Path (Fallback)"]
+    subgraph DOMPath["🔧 DOM Automation Path (Fallback)"]
         direction TB
         T1["Agent Tool Call"] --> T2["DOM Inspection"]
         T2 --> T3["CSS/XPath Selectors"]
@@ -145,24 +145,24 @@ flowchart LR
         T4 --> T5["Parse Response DOM"]
     end
 
-    subgraph WebMCPPath["📡 WebMCP Path (Preferred)"]
+    subgraph APIPath["📡 Native API Path (Preferred)"]
         direction TB
-        W1["Agent Tool Call"] --> W2["Discover Site Tools\n(WebMCP manifest)"]
-        W2 --> W3{"Declarative or\nImperative?"}
-        W3 -->|"Simple form"| W4["Declarative API\n(HTML action)"]
-        W3 -->|"Complex flow"| W5["Imperative API\n(JS execution)"]
+        W1["Agent Tool Call"] --> W2["Discover APIs\n(OpenAPI / Swagger)"]
+        W2 --> W3{"REST or\nGraphQL?"}
+        W3 -->|"CRUD operations"| W4["REST API\n(HTTP methods)"]
+        W3 -->|"Complex queries"| W5["GraphQL API\n(Flexible queries)"]
         W4 --> W6["Structured Response"]
         W5 --> W6
     end
 
-    Agent["🤖 Agent"] --> Traditional
-    Agent --> WebMCPPath
+    Agent["🤖 Agent"] --> DOMPath
+    Agent --> APIPath
 
-    style WebMCPPath fill:#E8EAF6,stroke:#283593
-    style Traditional fill:#FFF3E0,stroke:#E65100
+    style APIPath fill:#E8EAF6,stroke:#283593
+    style DOMPath fill:#FFF3E0,stroke:#E65100
 ```
 
-> **Why WebMCP matters:** When a website exposes WebMCP tools, the agent skips brittle DOM scraping and uses the site's own structured APIs. This is faster, more reliable, and eliminates ambiguity — the site tells the agent exactly what actions are available and how to invoke them.
+> **Why Native API Integration matters:** Enterprise applications like ServiceNow, Jira, Workday, and Grafana all expose mature REST/GraphQL APIs. By calling these APIs directly, the agent skips brittle DOM scraping and gets structured responses immediately. This is faster, more reliable, and works independently of UI changes — the API contract defines exactly what actions are available and how to invoke them.
 
 ## Security Flow
 
@@ -304,51 +304,47 @@ sequenceDiagram
 
 ---
 
-## Example 3 — Multi-Step Travel Booking with WebMCP
+## Example 3 — Multi-Step Travel Booking with Native API Integration
 
 **Scenario:** An employee asks: _"Book me the cheapest direct flight from Seattle to New York on March 15, and submit for manager approval."_
 
-This example showcases WebMCP's **Declarative API** for the search form and **Imperative API** for the dynamic results filtering.
+This example showcases the **Native API Integration** — the agent discovers the travel portal's REST API via its OpenAPI spec, then uses direct API calls for search, filtering, and booking.
 
 ```mermaid
 sequenceDiagram
     participant E as Employee
     participant A as Agent
     participant S as Security
-    participant W as WebMCP
-    participant B as Browser
+    participant API as API Integration Layer
     participant T as Corporate Travel Portal
 
     E->>A: "Book cheapest direct SEA→JFK,<br/>March 15, submit for approval"
 
-    Note over A: Step 1 — Discover site tools via WebMCP
-    A->>B: navigate_page(travel.corp)
-    B->>T: GET /travel
-    T-->>B: Page + WebMCP tool manifest
-    B->>W: Parse WebMCP tools
-    W-->>A: Available tools:<br/>• search_flights (Declarative)<br/>• filter_results (Imperative)<br/>• select_flight (Imperative)<br/>• submit_booking (Declarative)
+    Note over A: Step 1 — Discover site APIs
+    A->>API: discover_apis(travel.corp)
+    API->>T: GET /api/openapi.json
+    T-->>API: OpenAPI specification
+    API-->>A: Available endpoints:<br/>• GET /api/flights/search<br/>• GET /api/flights/{id}<br/>• POST /api/bookings<br/>• GET /api/bookings/{id}
 
-    Note over A: Step 2 — Search via Declarative API
-    A->>W: search_flights(from:SEA, to:JFK,<br/>date:2026-03-15, direct:true)
-    W->>T: HTML form POST (structured)
-    T-->>W: 8 results
-    W-->>A: Flight results (structured JSON)
+    Note over A: Step 2 — Search flights via REST API
+    A->>API: GET /api/flights/search?from=SEA&to=JFK<br/>&date=2026-03-15&direct=true
+    API->>T: REST API call (direct HTTP)
+    T-->>API: 8 results (JSON)
+    API-->>A: Flight results (structured JSON)
 
-    Note over A: Step 3 — Filter & select via Imperative API
-    A->>W: filter_results(sort:price_asc)
-    W->>T: JS execution (dynamic sort)
-    T-->>W: Sorted results
-    W-->>A: Cheapest: Alaska AS204, $189, departs 6:15 AM
+    Note over A: Step 3 — Sort results (client-side)
+    A->>A: Sort by price ascending
+    A->>A: Cheapest: Alaska AS204, $189, departs 6:15 AM
 
-    Note over A: Step 4 — Book via Declarative API
-    A->>S: submit_booking(flight:AS204)
+    Note over A: Step 4 — Book via REST API
+    A->>S: POST /api/bookings (flight:AS204)
     S->>S: ⚠️ Financial action — approval needed
     S->>E: "Book Alaska AS204 SEA→JFK $189?"
     E->>S: ✅ Approved
-    S->>W: submit_booking(AS204, approval:manager)
-    W->>T: HTML form POST
-    T-->>W: Booking submitted for manager approval
-    W-->>A: Confirmation #TRV-29481
+    S->>API: POST /api/bookings {flight:AS204, approval:manager}
+    API->>T: REST API call
+    T-->>API: Booking submitted for manager approval
+    API-->>A: Confirmation #TRV-29481
 
     A-->>E: "✅ Booked Alaska AS204 ($189)<br/>SEA→JFK Mar 15, 6:15 AM<br/>Pending manager approval<br/>Confirmation: TRV-29481"
 ```
@@ -466,5 +462,5 @@ sequenceDiagram
 
 ## Related Files
 
-- **[agents.md](./agents.md)** — Agent types, M365 Copilot app packaging, declarative agent manifest, and WebMCP connection strategy
-- **[skills.md](./skills.md)** — Detailed skill definitions (`navigate_page`, `extract_content`, `fill_form`, `submit_action`, `discover_tools`, `compare_data`), API plugin spec, and security classifications
+- **[agents.md](./agents.md)** — Agent types, M365 Copilot app packaging, declarative agent manifest, and API integration strategy
+- **[skills.md](./skills.md)** — Detailed skill definitions (`navigate_page`, `extract_content`, `fill_form`, `submit_action`, `discover_apis`, `compare_data`), API plugin spec, and security classifications

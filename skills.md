@@ -2,7 +2,7 @@
 
 ## Overview
 
-Skills are the capabilities that the Browser Agent exposes to the Microsoft 365 Copilot orchestrator. Each skill maps to a **tool** that the agent can invoke during multi-step workflows. Skills are defined as API plugin actions in the agent's app package and are executed through the browser automation layer (J-browser-agents) with optional WebMCP acceleration.
+Skills are the capabilities that the Browser Agent exposes to the Microsoft 365 Copilot orchestrator. Each skill maps to a **tool** that the agent can invoke during multi-step workflows. Skills are defined as API plugin actions in the agent's app package and are executed through the browser automation layer (J-browser-agents) with optional native API acceleration when target applications expose REST/GraphQL endpoints.
 
 ---
 
@@ -27,7 +27,7 @@ flowchart TB
     end
 
     subgraph Execution["⚡ Execution Layer"]
-        WebMCP["WebMCP APIs\n(Declarative + Imperative)"]
+        NativeAPI["Native API Integration\n(REST / GraphQL)"]
         DOM["DOM Automation\n(J-browser-agents)"]
         Security["Security Gate\n(Auth + Allowlist + Approval)"]
     end
@@ -35,7 +35,7 @@ flowchart TB
     Intent --> SkillSelect
     SkillSelect --> Skills
     Skills --> Security
-    Security -->|"Preferred"| WebMCP
+    Security -->|"Preferred"| NativeAPI
     Security -->|"Fallback"| DOM
 
     classDef orchestrator fill:#E3F2FD,stroke:#1565C0,color:#0D47A1
@@ -44,7 +44,7 @@ flowchart TB
 
     class Intent,SkillSelect orchestrator
     class Navigate,Extract,FillForm,SubmitAction,Discover,Screenshot,MultiStep,Compare skill
-    class WebMCP,DOM,Security exec
+    class NativeAPI,DOM,Security exec
 ```
 
 ---
@@ -59,7 +59,7 @@ Navigate the browser to a specified URL, with optional click/scroll actions to r
 |---|---|
 | **Type** | Browser Navigation |
 | **Security** | URL allowlist check required |
-| **WebMCP** | Uses Declarative API for link navigation when available |
+| **API Path** | Uses REST API for direct navigation/resource access when available |
 | **Fallback** | Direct URL load + DOM click via CSS/XPath selectors |
 
 **Parameters:**
@@ -91,7 +91,7 @@ Read and structure content from the current page — tables, text blocks, lists,
 |---|---|
 | **Type** | Content Extraction (Read-only) |
 | **Security** | No write action — no approval gate needed |
-| **WebMCP** | Uses Imperative API to call site-exposed read methods |
+| **API Path** | Uses REST/GraphQL endpoints to call application read methods directly |
 | **Fallback** | DOM parsing with CSS/XPath, table extraction, text summarization |
 
 **Parameters:**
@@ -135,7 +135,7 @@ Populate form fields on the current page with provided values.
 |---|---|
 | **Type** | Form Input (Write action) |
 | **Security** | ⚠️ Approval gate required (PII-sensitive or state-changing) |
-| **WebMCP** | Uses Declarative API to populate HTML form fields directly |
+| **API Path** | Uses REST API to populate fields via PUT/PATCH requests directly |
 | **Fallback** | DOM selector-based input simulation |
 
 **Parameters:**
@@ -169,7 +169,7 @@ Trigger a button click, form submission, or state-changing action on the current
 |---|---|
 | **Type** | Action Execution (Write action) |
 | **Security** | ⚠️ Human-in-the-loop approval required for all destructive actions |
-| **WebMCP** | Uses Declarative API for form submit, Imperative API for complex transitions |
+| **API Path** | Uses REST API for form submit (POST), GraphQL mutations for complex transitions |
 | **Fallback** | DOM click on button/link elements |
 
 **Parameters:**
@@ -191,23 +191,23 @@ submit_action(action: "submit_booking", data: { flight: "AS204", class: "economy
 
 ---
 
-## WebMCP-Enhanced Skills
+## API-Enhanced Skills
 
-### 5. `discover_tools`
+### 5. `discover_apis`
 
-Query a WebMCP-enabled site for its exposed tool manifest. Returns the list of structured actions the site supports, enabling the agent to skip DOM guessing entirely.
+Query a target application for its available API endpoints. Probes for OpenAPI/Swagger specifications, well-known API paths, and API documentation pages. Returns the list of structured endpoints the application supports, enabling the agent to skip DOM guessing entirely.
 
 | Property | Detail |
 |---|---|
 | **Type** | Discovery (Read-only) |
-| **Protocol** | WebMCP Tool Discovery |
+| **Protocol** | OpenAPI / Swagger / Well-Known API Detection |
 | **When** | Automatically invoked on first navigation to any new domain |
 
 **Parameters:**
 
 ```yaml
-discover_tools:
-  url: string               # Domain or page URL to query for WebMCP manifest
+discover_apis:
+  url: string               # Domain or base URL to probe for API specifications
 ```
 
 **Example Output:**
@@ -215,11 +215,13 @@ discover_tools:
 ```json
 {
   "site": "travel.corp",
-  "webmcp_version": "1.0",
-  "tools": [
+  "api_version": "v2",
+  "spec_url": "https://travel.corp/api/openapi.json",
+  "endpoints": [
     {
       "name": "search_flights",
-      "type": "declarative",
+      "method": "GET",
+      "path": "/api/flights/search",
       "description": "Search for flights by origin, destination, and date",
       "parameters": {
         "from": "IATA code",
@@ -229,17 +231,18 @@ discover_tools:
       }
     },
     {
-      "name": "filter_results",
-      "type": "imperative",
-      "description": "Sort and filter search results",
+      "name": "get_flight",
+      "method": "GET",
+      "path": "/api/flights/{id}",
+      "description": "Get details of a specific flight",
       "parameters": {
-        "sort_by": "price | duration | departure",
-        "order": "asc | desc"
+        "id": "string"
       }
     },
     {
       "name": "submit_booking",
-      "type": "declarative",
+      "method": "POST",
+      "path": "/api/bookings",
       "description": "Submit a flight booking",
       "parameters": {
         "flight_id": "string",
@@ -378,20 +381,20 @@ compare_data:
 
 ---
 
-## Skill ↔ WebMCP Mapping
+## Skill ↔ API Integration Mapping
 
-This table shows how each skill leverages WebMCP when available:
+This table shows how each skill leverages native APIs when available:
 
-| Skill | WebMCP Declarative | WebMCP Imperative | DOM Fallback |
+| Skill | REST API | GraphQL API | DOM Fallback |
 |---|---|---|---|
-| `navigate_page` | ✅ Link actions | — | ✅ URL load + click |
-| `extract_content` | — | ✅ Read methods | ✅ DOM parse |
-| `fill_form` | ✅ Form field population | ✅ Dynamic fields | ✅ Input simulation |
-| `submit_action` | ✅ Form submit | ✅ Complex transitions | ✅ Button click |
-| `discover_tools` | N/A (discovery is the protocol itself) | N/A | N/A |
+| `navigate_page` | ✅ Direct resource access | — | ✅ URL load + click |
+| `extract_content` | ✅ GET endpoints | ✅ Flexible queries | ✅ DOM parse |
+| `fill_form` | ✅ PUT/PATCH fields | ✅ Mutations | ✅ Input simulation |
+| `submit_action` | ✅ POST / DELETE | ✅ Mutations | ✅ Button click |
+| `discover_apis` | N/A (discovery is the mechanism itself) | N/A | N/A |
 | `capture_screenshot` | — | — | ✅ Browser API |
 | `orchestrate_workflow` | ✅ Per-step | ✅ Per-step | ✅ Per-step |
-| `compare_data` | — | ✅ Read methods | ✅ DOM parse |
+| `compare_data` | ✅ GET endpoints | ✅ Flexible queries | ✅ DOM parse |
 
 ---
 
@@ -501,8 +504,8 @@ Skills are exposed to the M365 Copilot orchestrator as an API plugin. The OpenAP
       }
     },
     {
-      "name": "discover_tools",
-      "description": "Query a WebMCP-enabled site for its structured tool manifest",
+      "name": "discover_apis",
+      "description": "Probe a target application for available REST/GraphQL API endpoints via OpenAPI/Swagger specs",
       "parameters": {
         "type": "object",
         "required": ["url"],
@@ -542,4 +545,4 @@ Skills are exposed to the M365 Copilot orchestrator as an API plugin. The OpenAP
 ## Related Files
 
 - **[ARCHITECTURE.md](./ARCHITECTURE.md)** — Full system architecture diagram with all layers and examples
-- **[agents.md](./agents.md)** — Agent types, M365 app packaging, and WebMCP connection strategy
+- **[agents.md](./agents.md)** — Agent types, M365 app packaging, and API integration strategy

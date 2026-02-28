@@ -2,7 +2,7 @@
 
 ## Overview
 
-This system is built as a **Microsoft 365 Copilot declarative agent** that combines the Copilot SDK orchestrator with browser automation (J-browser-agents) and Chrome's [WebMCP protocol](https://developer.chrome.com/blog/webmcp-epp) to navigate, read, and act on internal and external web applications on behalf of enterprise users.
+This system is built as a **Microsoft 365 Copilot declarative agent** that combines the Copilot SDK orchestrator with browser automation (J-browser-agents) and **Native API Integration** (direct REST/GraphQL calls to target applications) to navigate, read, and act on internal and external web applications on behalf of enterprise users.
 
 The agent is packaged and distributed through the Microsoft 365 app model, appearing contextually within Copilot Chat, Teams, Outlook, and other M365 surfaces.
 
@@ -40,7 +40,7 @@ flowchart TB
 
     subgraph BrowserLayer["🌐 Browser Automation"]
         JBrowser["J-browser-agents\n(Headless Browser Pool)"]
-        WebMCP["WebMCP Protocol\n(Declarative + Imperative APIs)"]
+        APIIntegration["Native API Integration\n(REST / GraphQL Direct Calls)"]
         DOMFallback["DOM Scraping\n(CSS/XPath Fallback)"]
     end
 
@@ -59,9 +59,9 @@ flowchart TB
     Planner <--> Memory
     Planner --> ToolRouter
     ToolRouter --> SecurityBoundary
-    SecurityBoundary -->|"Preferred path"| WebMCP
+    SecurityBoundary -->|"Preferred path"| APIIntegration
     SecurityBoundary -->|"Fallback path"| DOMFallback
-    WebMCP --> JBrowser
+    APIIntegration --> JBrowser
     DOMFallback --> JBrowser
     ApprovalGate -.->|"Confirm destructive actions"| CopilotUI
 
@@ -86,7 +86,7 @@ flowchart TB
     class Manifest,AgentDef,PluginDef,Icons pkg
     class Planner,Memory,ToolRouter core
     class AuthProxy,URLGate,ApprovalGate,Audit sec
-    class JBrowser,WebMCP,DOMFallback browser
+    class JBrowser,APIIntegration,DOMFallback browser
     class Internal,External target
 ```
 
@@ -103,7 +103,7 @@ The core agent that navigates web pages, extracts content, fills forms, and subm
 | **Type** | Declarative Agent (M365 Copilot) |
 | **Orchestrator** | Microsoft 365 Copilot Orchestrator |
 | **Runtime** | Copilot SDK + J-browser-agents |
-| **Protocol** | WebMCP (preferred) → DOM scraping (fallback) |
+| **Protocol** | Native API (REST/GraphQL preferred) → DOM scraping (fallback) |
 | **Auth** | Delegated SSO / Token Proxy |
 | **Approval** | Human-in-the-loop for destructive actions |
 
@@ -140,7 +140,7 @@ secure-browser-agent/
 ├── browserPlugin.json             # API plugin (browser automation skills)
 ├── openapi/
 │   ├── browser-tools.yml          # OpenAPI spec for browser tools
-│   └── webmcp-bridge.yml          # OpenAPI spec for WebMCP bridge
+│   └── api-connectors.yml         # OpenAPI spec for native API connectors
 ├── color.png                      # 192x192 color icon
 └── outline.png                    # 32x32 outline icon
 ```
@@ -191,7 +191,7 @@ secure-browser-agent/
   "version": "v1.6",
   "name": "Secure Browser Agent",
   "description": "Navigates enterprise web apps, extracts data, fills forms, and submits actions with security controls.",
-  "instructions": "You are a secure enterprise browser agent. You help users interact with internal web applications (ServiceNow, Jira, Workday, Grafana, etc.) and external sites (investor relations, SEC filings, travel portals). Always: (1) Check URL allowlist before navigating, (2) Use WebMCP structured tools when available, fall back to DOM scraping, (3) Request user approval before any write/submit action, (4) Log all actions to audit trail. Never: navigate to URLs outside the allowlist, submit forms without explicit user approval, or expose auth tokens in responses.",
+  "instructions": "You are a secure enterprise browser agent. You help users interact with internal web applications (ServiceNow, Jira, Workday, Grafana, etc.) and external sites (investor relations, SEC filings, travel portals). Always: (1) Check URL allowlist before navigating, (2) Use native REST/GraphQL APIs when available, fall back to DOM scraping, (3) Request user approval before any write/submit action, (4) Log all actions to audit trail. Never: navigate to URLs outside the allowlist, submit forms without explicit user approval, or expose auth tokens in responses.",
   "conversation_starters": [
     { "text": "Pull the SUMMARY RESULTS OF OPERATIONS from Microsoft's 2024 annual report" },
     { "text": "Close ServiceNow ticket INC0042 and link it to the Jira bug" },
@@ -213,21 +213,21 @@ secure-browser-agent/
 
 ---
 
-## WebMCP Connection
+## Native API Integration
 
 The agent uses a **dual-path strategy** to interact with target web applications:
 
 ```mermaid
 flowchart LR
-    Agent["🤖 Browser Agent"] --> Check{"Site exposes\nWebMCP tools?"}
+    Agent["🤖 Browser Agent"] --> Check{"App exposes\nREST/GraphQL API?"}
 
-    Check -->|"Yes ✅"| WebMCPPath["📡 WebMCP Path"]
+    Check -->|"Yes ✅"| APIPath["📡 API Path"]
     Check -->|"No ❌"| DOMPath["🔧 DOM Path"]
 
-    subgraph WebMCPPath_detail["WebMCP (Fast + Reliable)"]
-        Discover["1. Discover tool manifest"]
-        Declarative["2a. Declarative API\n(HTML form actions)"]
-        Imperative["2b. Imperative API\n(JS-driven flows)"]
+    subgraph APIPath_detail["Native API (Fast + Reliable)"]
+        Discover["1. Discover API schema\n(OpenAPI / Swagger)"]
+        REST["2a. REST API\n(CRUD operations)"]
+        GraphQL["2b. GraphQL API\n(Flexible queries)"]
         Structured["3. Structured response"]
     end
 
@@ -238,30 +238,30 @@ flowchart LR
         Act["4. Click / Fill / Read"]
     end
 
-    WebMCPPath --> Discover --> Declarative --> Structured
-    Discover --> Imperative --> Structured
+    APIPath --> Discover --> REST --> Structured
+    Discover --> GraphQL --> Structured
     DOMPath --> Navigate --> Parse --> Select --> Act
 
-    style WebMCPPath_detail fill:#E8EAF6,stroke:#283593
+    style APIPath_detail fill:#E8EAF6,stroke:#283593
     style DOMPath_detail fill:#FFF3E0,stroke:#E65100
 ```
 
-### Why WebMCP + M365 Copilot?
+### Why Native API Integration + M365 Copilot?
 
-| Aspect | Without WebMCP | With WebMCP |
+| Aspect | Without Native APIs | With Native APIs |
 |---|---|---|
-| **Tool Discovery** | Agent must infer page structure from DOM | Site declares available tools explicitly |
-| **Reliability** | Brittle — breaks when UI changes | Stable — uses site's own structured interface |
-| **Speed** | Full page render + DOM parsing | Direct API call via structured protocol |
-| **Accuracy** | Risk of wrong element selection | Zero ambiguity — site defines exact actions |
-| **Security** | Agent has full DOM access | Site controls exactly what agent can do |
+| **Tool Discovery** | Agent must infer page structure from DOM | Agent discovers endpoints via OpenAPI/Swagger specs |
+| **Reliability** | Brittle — breaks when UI changes | Stable — uses application's own API contract |
+| **Speed** | Full page render + DOM parsing | Direct HTTP call with structured response |
+| **Accuracy** | Risk of wrong element selection | Zero ambiguity — API defines exact operations |
+| **Compatibility** | Depends on browser-specific protocols | Works with any HTTP client, any runtime |
 
-### WebMCP Integration Points
+### API Integration Points
 
-1. **Tool Discovery** — When the agent navigates to a WebMCP-enabled site, it reads the tool manifest to understand what structured actions are available
-2. **Declarative API** — Simple form-based actions (search, filter, submit) are handled via HTML form definitions exposed by the site
-3. **Imperative API** — Complex dynamic interactions (multi-step wizards, conditional flows) are executed via JavaScript APIs exposed by the site
-4. **Fallback** — If the site doesn't support WebMCP, the agent falls back to traditional DOM scraping via J-browser-agents
+1. **API Schema Discovery** — When the agent targets a new application, it probes for OpenAPI/Swagger specs (e.g., `/api/openapi.json`, `/swagger.json`, `/.well-known/api-spec`) to understand available endpoints
+2. **REST API** — Standard CRUD operations (GET, POST, PUT, DELETE) for reading data, creating records, updating fields, and triggering actions
+3. **GraphQL API** — Complex queries spanning multiple resources, flexible field selection, and batch operations
+4. **Fallback** — If the application doesn't expose a usable API, the agent falls back to traditional DOM scraping via J-browser-agents
 
 ---
 
