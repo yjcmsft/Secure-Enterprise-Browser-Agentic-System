@@ -1,0 +1,33 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.18/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.18",
+  "version": "1.0.0",
+  "id": "{{AGENT_APP_ID}}",
+  "developer": {
+    "name": "Enterprise Browser Agent",
+    "websiteUrl": "https://github.com/example/secure-browser-agent",
+    "privacyUrl": "https://example.com/privacy",
+    "termsOfUseUrl": "https://example.com/terms"
+  },
+  "name": {
+    "short": "Browser Agent",
+    "full": "Secure Enterprise Browser Agent"
+  },
+  "description": {
+    "short": "Navigate, read, and act on web apps securely",
+    "full": "An AI agent that navigates internal and external web applications with enterprise controls."
+  },
+  "icons": {
+    "color": "color.png",
+    "outline": "outline.png"
+  },
+  "accentColor": "#1565C0",
+  "copilotAgents": {
+    "declarativeAgents": [
+      {
+        "id": "browser-agent",
+        "file": "declarativeAgent.json"
+      }
+    ]
+  }
+}

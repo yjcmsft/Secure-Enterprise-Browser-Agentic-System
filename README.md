@@ -7,6 +7,7 @@ A **Microsoft 365 Copilot declarative agent** that securely navigates, reads, an
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com)
 [![Built with Copilot SDK](https://img.shields.io/badge/Built%20with-Copilot%20SDK-blue)](https://learn.microsoft.com/copilot/agents)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![Latest Changes](https://img.shields.io/badge/Latest%20Changes-Changelog-orange)](./CHANGELOG.md)
 
 ---
 
@@ -877,6 +878,10 @@ secure-browser-agent/
 | [agents.md](./agents.md) | Agent types, M365 app packaging, declarative agent manifest, Foundry integration |
 | [skills.md](./skills.md) | 8 skill definitions, API plugin spec, security classification, Graph API skills |
 
+### Upgrade Notes
+
+For recent security, reliability, and observability improvements, see [CHANGELOG.md](./CHANGELOG.md).
+
 ---
 
 ## 🏁 Quick Start
@@ -904,3 +909,99 @@ cd app-package && zip -r ../app-package.zip .
 # 5. Test in Copilot Chat
 # @BrowserAgent pull the revenue from Microsoft's 2024 annual report
 ```
+
+---
+
+## 🔎 API Request Correlation Contract
+
+All runtime endpoints support correlation IDs for end-to-end tracing across client logs, API logs, and security audit logs.
+
+### Request ID Resolution
+
+For every incoming request, the runtime resolves `requestId` in this order:
+
+1. `x-request-id` HTTP request header
+2. `requestId` field in JSON body
+3. Auto-generated UUID (server-side)
+
+The resolved ID is always returned in:
+
+- Response header: `x-request-id`
+- Response JSON body: `requestId`
+
+### Endpoint Behavior
+
+| Endpoint | Includes `requestId` in body | Includes `x-request-id` header |
+|---|---|---|
+| `GET /health` | ✅ | ✅ |
+| `GET /ready` | ✅ | ✅ |
+| `POST /api/skills/:skillName` | ✅ | ✅ |
+| `POST /api/workflow` | ✅ | ✅ |
+| `POST /api/approve/:actionId` | ✅ | ✅ |
+
+### Example
+
+```http
+POST /api/skills/navigate_page
+x-request-id: req-9f2b3c
+content-type: application/json
+
+{
+  "userId": "u1",
+  "sessionId": "s1",
+  "params": {
+    "url": "https://learn.microsoft.com"
+  }
+}
+```
+
+```json
+{
+  "requestId": "req-9f2b3c",
+  "skill": "navigate_page",
+  "success": true,
+  "path": "dom",
+  "durationMs": 242
+}
+```
+
+This same `requestId` appears in runtime error logs and security audit entries for fast incident triage.
+
+### Troubleshooting by `requestId`
+
+When an operation fails, keep the `requestId` from the API response and use it to pivot across logs.
+
+#### 1) Local runtime logs (PowerShell)
+
+```powershell
+# Replace with your ID
+$rid = "req-9f2b3c"
+
+# If logs are in a file
+Get-Content .\agent.log | Select-String $rid
+
+# If running in terminal and piping output
+npm run dev 2>&1 | Select-String $rid
+```
+
+#### 2) Security audit records (in-memory during local tests)
+
+Security gate tests already emit audit entries containing `requestId`, `errorCode`, and `deniedReason`.
+Use the same ID to confirm whether a block came from allowlist, approval, or content safety.
+
+#### 3) Azure Monitor / Application Insights (Kusto)
+
+```kusto
+traces
+| where message has "skill_execution_failed" or message has "audit"
+| where customDimensions.requestId == "req-9f2b3c"
+| project timestamp, message, severityLevel, customDimensions
+| order by timestamp asc
+```
+
+#### 4) Common diagnostic pattern
+
+1. Find API response `requestId`
+2. Query runtime error log by `requestId`
+3. Query audit event by `requestId`
+4. Use `errorCode` (`URL_NOT_ALLOWED`, `INPUT_BLOCKED`, `APPROVAL_DENIED`, `OUTPUT_BLOCKED`) to identify root cause quickly

@@ -15,7 +15,9 @@
     "lint:fix": "eslint src/ tests/ --fix",
     "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
     "typecheck": "tsc --noEmit",
-    "clean": "rimraf dist"
+    "clean": "rimraf dist",
+    "deploy:preview": "powershell -ExecutionPolicy Bypass -File ./scripts/deploy-preview.ps1",
+    "deploy": "powershell -ExecutionPolicy Bypass -File ./scripts/deploy.ps1"
   },
   "keywords": [
     "copilot",
@@ -29,7 +31,7 @@
     "node": ">=20.0.0"
   },
   "dependencies": {
-    "@azure/ai-content-safety": "^1.0.0",
+    "@azure-rest/ai-content-safety": "^1.0.0",
     "@azure/cosmos": "^4.2.0",
     "@azure/identity": "^4.5.0",
     "@azure/keyvault-secrets": "^4.9.0",

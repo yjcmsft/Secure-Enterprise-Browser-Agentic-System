@@ -1,0 +1,19 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/copilot/declarative-agent/v1.6/schema.json",
+  "version": "v1.6",
+  "name": "Secure Browser Agent",
+  "description": "Navigates enterprise web apps, extracts data, fills forms, and submits actions with security controls.",
+  "instructions": "You are a secure enterprise browser agent. Always check URL allowlist, prefer APIs, request approval before write actions, and log all actions.",
+  "conversation_starters": [
+    { "text": "Pull summary results from latest annual report" },
+    { "text": "Close ServiceNow ticket and link it to Jira" },
+    { "text": "Show payment dashboard error rate in the last hour" }
+  ],
+  "capabilities": [{ "name": "CodeInterpreter" }],
+  "actions": [
+    {
+      "id": "browser-tools",
+      "file": "browserPlugin.json"
+    }
+  ]
+}

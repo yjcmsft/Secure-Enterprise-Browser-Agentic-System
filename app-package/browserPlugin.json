@@ -1,0 +1,26 @@
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/copilot/plugin/v2.2/schema.json",
+  "schema_version": "v2.2",
+  "name_for_human": "Browser Tools",
+  "name_for_model": "browser_tools",
+  "description_for_human": "Secure browser and API automation tools",
+  "description_for_model": "Use these tools to navigate, extract, fill, submit, discover APIs, and run M365 collaboration actions.",
+  "api": {
+    "type": "openapi",
+    "url": "./openapi/browser-tools.yml"
+  },
+  "functions": [
+    { "name": "navigate_page" },
+    { "name": "extract_content" },
+    { "name": "fill_form" },
+    { "name": "submit_action" },
+    { "name": "discover_apis" },
+    { "name": "capture_screenshot" },
+    { "name": "compare_data" },
+    { "name": "orchestrate_workflow" },
+    { "name": "send_teams_message" },
+    { "name": "create_adaptive_card" },
+    { "name": "manage_calendar" },
+    { "name": "analyze_work_patterns" }
+  ]
+}

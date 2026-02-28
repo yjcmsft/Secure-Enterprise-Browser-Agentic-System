@@ -1,0 +1,110 @@
+name: Deploy
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+
+env:
+  AZURE_LOCATION: eastus
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+      - uses: microsoft/security-devops-action@v1
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm test
+      - run: az bicep build --file infra/main.bicep
+
+  deploy-staging:
+    needs: test
+    runs-on: ubuntu-latest
+    environment: staging
+    env:
+      AZURE_ENV_NAME: ${{ vars.AZURE_ENV_NAME || 'secure-browser-agent-staging' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Install azd
+        uses: Azure/setup-azd@v2
+
+      - name: Provision & deploy to staging
+        run: |
+          azd env select ${{ env.AZURE_ENV_NAME }} 2>/dev/null || \
+            azd env new ${{ env.AZURE_ENV_NAME }} --location ${{ env.AZURE_LOCATION }} --subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }} --no-prompt
+          azd up --no-prompt
+        env:
+          AZURE_ENV_NAME: ${{ env.AZURE_ENV_NAME }}
+
+      - name: Smoke-test staging health endpoint
+        run: |
+          AGENT_URL=$(azd env get-value AZURE_CONTAINER_APP_URL 2>/dev/null || echo "")
+          if [ -n "$AGENT_URL" ]; then
+            curl --fail --retry 3 --retry-delay 5 "$AGENT_URL/health" || echo "::warning::Staging health check failed"
+          fi
+
+  deploy-prod:
+    needs: deploy-staging
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      AZURE_ENV_NAME: ${{ vars.AZURE_ENV_NAME || 'secure-browser-agent-prod' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+      - run: npm ci
+
+      - name: Azure login
+        uses: azure/login@v2
+        with:
+          client-id: ${{ secrets.AZURE_CLIENT_ID }}
+          tenant-id: ${{ secrets.AZURE_TENANT_ID }}
+          subscription-id: ${{ secrets.AZURE_SUBSCRIPTION_ID }}
+
+      - name: Install azd
+        uses: Azure/setup-azd@v2
+
+      - name: Provision & deploy to production
+        run: |
+          azd env select ${{ env.AZURE_ENV_NAME }} 2>/dev/null || \
+            azd env new ${{ env.AZURE_ENV_NAME }} --location ${{ env.AZURE_LOCATION }} --subscription ${{ secrets.AZURE_SUBSCRIPTION_ID }} --no-prompt
+          azd up --no-prompt
+        env:
+          AZURE_ENV_NAME: ${{ env.AZURE_ENV_NAME }}
+
+      - name: Smoke-test production health endpoint
+        run: |
+          AGENT_URL=$(azd env get-value AZURE_CONTAINER_APP_URL 2>/dev/null || echo "")
+          if [ -n "$AGENT_URL" ]; then
+            curl --fail --retry 3 --retry-delay 5 "$AGENT_URL/health"
+          fi
+
+      - name: Upload M365 app package
+        run: |
+          cd app-package
+          zip -r ../secure-browser-agent-app.zip .
+          echo "::notice::M365 app package built at secure-browser-agent-app.zip — upload via M365 Admin Center"

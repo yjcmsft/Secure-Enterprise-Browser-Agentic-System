@@ -1,0 +1,63 @@
+openapi: 3.0.3
+info:
+  title: Native API Connectors
+  version: 1.0.0
+servers:
+  - url: https://agent.example.com
+paths:
+  /api/connectors/discovery:
+    post:
+      operationId: schema_discovery
+      summary: Discover API schemas
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                baseUrl:
+                  type: string
+      responses:
+        "200":
+          description: OK
+  /api/connectors/rest:
+    post:
+      operationId: rest_proxy
+      summary: Proxy REST call
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                method:
+                  type: string
+                url:
+                  type: string
+                body:
+                  type: object
+      responses:
+        "200":
+          description: OK
+  /api/connectors/graphql:
+    post:
+      operationId: graphql_proxy
+      summary: Proxy GraphQL call
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                endpoint:
+                  type: string
+                query:
+                  type: string
+                variables:
+                  type: object
+      responses:
+        "200":
+          description: OK

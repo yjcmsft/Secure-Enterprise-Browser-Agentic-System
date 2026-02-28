@@ -1,0 +1,11 @@
+name: secure-enterprise-browser-agent
+metadata:
+  template: secure-enterprise-browser-agent@1.0.0
+services:
+  browser-agent:
+    project: .
+    host: containerapp
+    language: ts
+infra:
+  provider: bicep
+  path: infra

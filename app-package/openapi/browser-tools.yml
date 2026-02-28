@@ -1,0 +1,111 @@
+openapi: 3.0.3
+info:
+  title: Secure Browser Tools API
+  version: 1.0.0
+servers:
+  - url: https://agent.example.com
+paths:
+  /api/skills/navigate_page:
+    post:
+      operationId: navigate_page
+      summary: Navigate to page
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: OK
+  /api/skills/extract_content:
+    post:
+      operationId: extract_content
+      summary: Extract page content
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: OK
+  /api/skills/fill_form:
+    post:
+      operationId: fill_form
+      summary: Fill form values
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: OK
+  /api/skills/submit_action:
+    post:
+      operationId: submit_action
+      summary: Submit state-changing action
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: OK
+  /api/skills/discover_apis:
+    post:
+      operationId: discover_apis
+      summary: Discover REST/GraphQL endpoints
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: OK
+  /api/skills/capture_screenshot:
+    post:
+      operationId: capture_screenshot
+      summary: Capture screenshot
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: OK
+  /api/skills/compare_data:
+    post:
+      operationId: compare_data
+      summary: Compare extracted data across sources
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: OK
+  /api/skills/orchestrate_workflow:
+    post:
+      operationId: orchestrate_workflow
+      summary: Execute a multi-step workflow
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        "200":
+          description: OK
