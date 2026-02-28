@@ -1,0 +1,58 @@
+{
+  "name": "secure-enterprise-browser-agent",
+  "version": "1.0.0",
+  "description": "A Microsoft 365 Copilot declarative agent that securely navigates, reads, and acts across enterprise web applications",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx watch src/index.ts",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "lint": "eslint src/ tests/",
+    "lint:fix": "eslint src/ tests/ --fix",
+    "format": "prettier --write \"src/**/*.ts\" \"tests/**/*.ts\"",
+    "typecheck": "tsc --noEmit",
+    "clean": "rimraf dist"
+  },
+  "keywords": [
+    "copilot",
+    "m365",
+    "browser-automation",
+    "enterprise",
+    "azure"
+  ],
+  "license": "MIT",
+  "engines": {
+    "node": ">=20.0.0"
+  },
+  "dependencies": {
+    "@azure/ai-content-safety": "^1.0.0",
+    "@azure/cosmos": "^4.2.0",
+    "@azure/identity": "^4.5.0",
+    "@azure/keyvault-secrets": "^4.9.0",
+    "@microsoft/microsoft-graph-client": "^3.0.7",
+    "axios": "^1.7.9",
+    "express": "^4.21.1",
+    "isomorphic-fetch": "^3.0.0",
+    "playwright": "^1.49.1",
+    "swagger-parser": "^10.0.3",
+    "winston": "^3.17.0",
+    "yaml": "^2.7.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.0",
+    "@types/node": "^22.10.2",
+    "@typescript-eslint/eslint-plugin": "^8.18.0",
+    "@typescript-eslint/parser": "^8.18.0",
+    "eslint": "^9.16.0",
+    "prettier": "^3.4.2",
+    "rimraf": "^6.0.1",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2",
+    "vitest": "^2.1.8"
+  }
+}
