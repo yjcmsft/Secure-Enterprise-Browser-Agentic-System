@@ -2,7 +2,7 @@
 
 ## Overview
 
-Skills are the capabilities that the Browser Agent exposes to the Microsoft 365 Copilot orchestrator. Each skill maps to a **tool** that the agent can invoke during multi-step workflows. Skills are defined as API plugin actions in the agent's app package and are executed through the browser automation layer (J-browser-agents) with optional native API acceleration when target applications expose REST/GraphQL endpoints.
+Skills are the capabilities that the Browser Agent exposes to the Microsoft 365 Copilot orchestrator. Each skill maps to a **tool** that the agent can invoke during multi-step workflows. Skills are defined as API plugin actions in the agent's app package and are executed through the browser automation layer (J-browser-agents) with optional native API acceleration when target applications expose REST/GraphQL endpoints. All skill inputs and outputs are screened by **Azure AI Content Safety** for harmful content, PII detection, and prompt injection defense.
 
 ---
 
@@ -24,12 +24,17 @@ flowchart TB
         Screenshot["capture_screenshot"]
         MultiStep["orchestrate_workflow"]
         Compare["compare_data"]
+        GraphMsg["send_teams_message"]
+        GraphCard["create_adaptive_card"]
+        GraphCal["manage_calendar"]
+        WorkIQSkill["analyze_work_patterns"]
     end
 
     subgraph Execution["⚡ Execution Layer"]
         NativeAPI["Native API Integration\n(REST / GraphQL)"]
         DOM["DOM Automation\n(J-browser-agents)"]
-        Security["Security Gate\n(Auth + Allowlist + Approval)"]
+        Security["Security Gate\n(Entra ID + Allowlist +\nApproval + Content Safety)"]
+        GraphAPI["Microsoft Graph API\n(Teams / Outlook / Calendar)"]
     end
 
     Intent --> SkillSelect
@@ -37,14 +42,15 @@ flowchart TB
     Skills --> Security
     Security -->|"Preferred"| NativeAPI
     Security -->|"Fallback"| DOM
+    Security -->|"M365 services"| GraphAPI
 
     classDef orchestrator fill:#E3F2FD,stroke:#1565C0,color:#0D47A1
     classDef skill fill:#E8F5E9,stroke:#2E7D32,color:#1B5E20
     classDef exec fill:#FFF3E0,stroke:#E65100,color:#BF360C
 
     class Intent,SkillSelect orchestrator
-    class Navigate,Extract,FillForm,SubmitAction,Discover,Screenshot,MultiStep,Compare skill
-    class NativeAPI,DOM,Security exec
+    class Navigate,Extract,FillForm,SubmitAction,Discover,Screenshot,MultiStep,Compare,GraphMsg,GraphCard,GraphCal,WorkIQSkill skill
+    class NativeAPI,DOM,Security,GraphAPI exec
 ```
 
 ---
@@ -544,5 +550,310 @@ Skills are exposed to the M365 Copilot orchestrator as an API plugin. The OpenAP
 
 ## Related Files
 
-- **[ARCHITECTURE.md](./ARCHITECTURE.md)** — Full system architecture diagram with all layers and examples
-- **[agents.md](./agents.md)** — Agent types, M365 app packaging, and API integration strategy
+- **[README.md](./README.md)** — Executive summary, "Operation Skyfall" demo, Azure integration, ROI metrics, Copilot SDK feedback, customer validation
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)** — Full system architecture diagram with all layers, Azure infrastructure, Responsible AI, observability
+- **[agents.md](./agents.md)** — Agent types, M365 app packaging, Azure Entra ID auth flow, Foundry integration
+
+---
+
+## Microsoft Graph Skills
+
+### 9. `send_teams_message`
+
+Send a message or adaptive card to a Teams channel or chat using Microsoft Graph API.
+
+| Property | Detail |
+|---|---|
+| **Type** | Communication (Write action) |
+| **Security** | ⚠️ Approval required for external recipients; internal messages auto-approved |
+| **API** | Microsoft Graph API — `POST /teams/{id}/channels/{id}/messages` |
+| **Auth** | Azure Entra ID with `Chat.ReadWrite` scope |
+
+**Parameters:**
+
+```yaml
+send_teams_message:
+  channel: string              # Teams channel name or ID
+  message: string              # Message content (markdown supported)
+  adaptive_card?: object       # Optional adaptive card payload
+  mentions?: string[]          # Optional @mentions
+```
+
+**Example Invocations:**
+
+```
+send_teams_message(channel: "#ceo-briefings", message: "Executive brief attached", adaptive_card: { ... })
+send_teams_message(channel: "@sarah.chen", message: "Welcome to the team! 🎉 Here's your onboarding checklist...")
+```
+
+---
+
+### 10. `create_adaptive_card`
+
+Generate a rich adaptive card for Teams with structured data, buttons, and interactive elements.
+
+| Property | Detail |
+|---|---|
+| **Type** | Content Generation (Read-only) |
+| **Security** | No approval needed (card generation only, not sending) |
+| **Use Case** | Format extracted data as interactive Teams cards |
+
+**Parameters:**
+
+```yaml
+create_adaptive_card:
+  title: string               # Card title
+  data: object                # Structured data to render
+  actions?: object[]          # Optional action buttons
+  style?: string              # "compact" | "detailed" | "executive"
+```
+
+---
+
+### 11. `manage_calendar`
+
+Create, read, or update Outlook calendar events via Microsoft Graph API.
+
+| Property | Detail |
+|---|---|
+| **Type** | Calendar Management (Write action) |
+| **Security** | ⚠️ Approval required for event creation/modification |
+| **API** | Microsoft Graph API — `/me/events` |
+| **Auth** | Azure Entra ID with `Calendars.ReadWrite` scope |
+
+**Parameters:**
+
+```yaml
+manage_calendar:
+  action: string              # "create" | "read" | "update" | "find_availability"
+  event?: object              # Event details (subject, start, end, attendees)
+  query?: string              # Search query for reading events
+```
+
+**Example:**
+
+```
+manage_calendar(action: "create", event: {
+  subject: "Board Meeting Prep",
+  start: "2026-03-15T08:00:00",
+  end: "2026-03-15T09:00:00",
+  attendees: ["ceo@company.com", "cfo@company.com"]
+})
+```
+
+---
+
+## Work IQ Skills
+
+### 12. `analyze_work_patterns`
+
+Leverage **Work IQ** to measure and report the productivity impact of agent-assisted workflows — time savings, focus time recovery, collaboration velocity, and workflow efficiency.
+
+| Property | Detail |
+|---|---|
+| **Type** | Analytics (Read-only) |
+| **Security** | No approval needed; privacy-preserving (aggregated metrics only) |
+| **Data Source** | Agent audit logs (Cosmos DB) + Microsoft Graph signals (calendar, email, Teams) + Fabric analytics |
+| **Integration** | Surfaces insights in Viva Insights, Power BI, and Fabric dashboards |
+
+**Parameters:**
+
+```yaml
+analyze_work_patterns:
+  scope: string                # "personal" | "team" | "organization"
+  timeframe: string            # "today" | "this_week" | "this_month" | "this_quarter"
+  metrics:                     # Which productivity metrics to analyze
+    - time_saved              # Hours saved vs. manual workflow baseline
+    - focus_time_recovered    # Uninterrupted work hours reclaimed
+    - context_switches_avoided # App-switches eliminated by agent
+    - collaboration_velocity  # Cross-team handoff speed improvement
+    - error_reduction         # Data entry error rate improvement
+    - meeting_impact          # Status meetings avoided due to auto-aggregation
+  compare_to?: string          # Optional: "previous_period" | "baseline" | "peers"
+```
+
+**Example Invocations:**
+
+```
+analyze_work_patterns(scope: "team", timeframe: "this_week", metrics: ["time_saved", "focus_time_recovered"])
+analyze_work_patterns(scope: "organization", timeframe: "this_quarter", metrics: ["time_saved", "error_reduction"], compare_to: "previous_period")
+```
+
+**Example Output:**
+
+```markdown
+## 📊 Work IQ — Team Productivity Report (This Week)
+
+| Metric | This Week | Last Week | Trend |
+|--------|-----------|-----------|-------|
+| Time saved | 42.3 hours | 38.1 hours | ↑ 11% |
+| Focus time recovered | 18.7 hours | 16.2 hours | ↑ 15% |
+| Context switches avoided | 847 | 723 | ↑ 17% |
+| Workflows completed | 234 | 198 | ↑ 18% |
+| Error rate | 0.08% | 0.12% | ↓ 33% |
+
+**💡 Insight:** Your team's top time-saving workflow this week was
+"Incident Resolution" (avg 39 min saved per execution, 67 executions).
+Consider expanding to the SRE team — projected additional savings: 28 hrs/week.
+```
+
+---
+
+## Azure AI Content Safety Integration
+
+All skill inputs and outputs pass through **Azure AI Content Safety** for Responsible AI enforcement:
+
+```mermaid
+flowchart LR
+    subgraph InputScreening["🛡️ Input Screening"]
+        Jailbreak["Jailbreak Detection\n(Prompt injection defense)"]
+        HarmfulInput["Harmful Content\n(Violence, hate, self-harm)"]
+        PIIInput["PII Detection\n(Names, SSNs, emails)"]
+    end
+
+    subgraph SkillExecution["⚙️ Skill Execution"]
+        Skill["Agent Skill\n(navigate, extract, fill, submit)"]
+    end
+
+    subgraph OutputScreening["📤 Output Screening"]
+        HarmfulOutput["Harmful Content Filter"]
+        PIIRedact["PII Auto-Redaction"]
+        Groundedness["Groundedness Check\n(Source attribution)"]
+    end
+
+    UserInput["User Input"] --> InputScreening
+    InputScreening -->|"✅ Safe"| SkillExecution
+    InputScreening -->|"❌ Blocked"| BlockResponse["Blocked Response\n+ Audit Log"]
+    SkillExecution --> OutputScreening
+    OutputScreening -->|"✅ Safe"| SafeOutput["Safe Response"]
+    OutputScreening -->|"⚠️ PII detected"| RedactedOutput["Redacted Response"]
+
+    classDef safety fill:#FFEBEE,stroke:#C62828
+    classDef skill fill:#E8F5E9,stroke:#2E7D32
+
+    class Jailbreak,HarmfulInput,PIIInput,HarmfulOutput,PIIRedact,Groundedness safety
+    class Skill skill
+```
+
+### Content Safety Configuration
+
+```yaml
+content_safety:
+  # Input screening
+  jailbreak_detection: enabled
+  harmful_content_threshold: medium    # low | medium | high | very_high
+  categories:
+    - hate: reject
+    - violence: reject
+    - self_harm: reject
+    - sexual: reject
+
+  # PII handling
+  pii_detection: enabled
+  pii_categories:
+    - person_name: redact_in_output
+    - social_security_number: block_always
+    - email_address: redact_in_output
+    - phone_number: redact_in_output
+    - credit_card_number: block_always
+
+  # Output screening
+  groundedness_check: enabled
+  max_ungrounded_percentage: 10       # Flag if >10% of response is ungrounded
+```
+
+### Prompt Injection Defense
+
+The agent implements a **multi-layer defense** against prompt injection attacks:
+
+| Layer | Defense | Example |
+|---|---|---|
+| **L1: Input** | Azure AI Content Safety jailbreak detection | Detects "ignore previous instructions" patterns |
+| **L2: Sanitization** | Strip known injection patterns from extracted web content | Removes `<script>` tags, encoded payloads from DOM |
+| **L3: Instruction Hierarchy** | System prompt > Agent instructions > User input | User cannot override security gates via prompt |
+| **L4: Schema Validation** | Skill parameters validated against OpenAPI schema | Rejects malformed URLs, unexpected field types |
+| **L5: Output** | Content Safety screens agent responses before delivery | Catches any harmful content generated during processing |
+
+---
+
+## Data Governance & Compliance
+
+### Data Residency
+
+| Data Type | Storage | Region Control | Retention |
+|---|---|---|---|
+| Audit logs | Azure Cosmos DB | Per-tenant Azure region | 7 years (configurable) |
+| Conversation memory | Azure Cosmos DB | Per-tenant Azure region | 30 days (auto-purge) |
+| Screenshots | Azure Blob Storage | Per-tenant Azure region | 24 hours (auto-delete) |
+| API tokens | Azure Key Vault | Per-tenant Azure region | Rotated every 24 hours |
+| Extracted data | In-memory only | Not persisted | Session lifetime only |
+
+### Compliance Certifications
+
+The system inherits Azure's compliance certifications:
+- **SOC 2 Type II** — Security, availability, processing integrity
+- **ISO 27001** — Information security management
+- **GDPR** — Data protection and privacy (EU)
+- **HIPAA** — Health data protection (US, with BAA)
+- **FedRAMP** — US federal government compliance
+- **CSA STAR** — Cloud security assurance
+
+---
+
+## Enhanced Skill ↔ API Integration Mapping
+
+| Skill | REST API | GraphQL | Microsoft Graph | DOM Fallback | Content Safety |
+|---|---|---|---|---|---|
+| `navigate_page` | ✅ Direct access | — | — | ✅ URL load + click | ✅ URL screening |
+| `extract_content` | ✅ GET endpoints | ✅ Flexible queries | — | ✅ DOM parse | ✅ Output screening |
+| `fill_form` | ✅ PUT/PATCH | ✅ Mutations | — | ✅ Input simulation | ✅ PII detection |
+| `submit_action` | ✅ POST/DELETE | ✅ Mutations | — | ✅ Button click | ✅ Action classification |
+| `discover_apis` | N/A (discovery) | N/A | — | N/A | — |
+| `capture_screenshot` | — | — | — | ✅ Browser API | ✅ PII auto-redaction |
+| `orchestrate_workflow` | ✅ Per-step | ✅ Per-step | — | ✅ Per-step | ✅ Per-step screening |
+| `compare_data` | ✅ GET endpoints | ✅ Queries | — | ✅ DOM parse | ✅ Output screening |
+| `send_teams_message` | — | — | ✅ Chat.ReadWrite | — | ✅ Content filtering |
+| `create_adaptive_card` | — | — | ✅ Teams cards | — | ✅ Content filtering |
+| `manage_calendar` | — | — | ✅ Calendars.RW | — | ✅ PII detection |
+| `analyze_work_patterns` | — | — | ✅ Analytics.Read | — | ✅ Privacy-preserving |
+
+---
+
+## Enhanced Security Classification
+
+```mermaid
+flowchart LR
+    subgraph ReadOnly["🟢 Read-Only (No Approval)"]
+        E1["navigate_page"]
+        E2["extract_content"]
+        E3["discover_apis"]
+        E4["capture_screenshot"]
+        E5["compare_data"]
+        E6["create_adaptive_card"]
+        E7["analyze_work_patterns"]
+    end
+
+    subgraph WriteAction["🟡 Write Actions (Approval Required)"]
+        W1["fill_form"]
+        W2["submit_action"]
+        W3["send_teams_message"]
+        W4["manage_calendar"]
+    end
+
+    subgraph MultiStep["🔴 Multi-Step (Per-Step Approval)"]
+        M1["orchestrate_workflow"]
+    end
+
+    subgraph AIGuard["🛡️ AI Safety (All Skills)"]
+        S1["Azure AI Content Safety"]
+        S2["Prompt Injection Defense"]
+        S3["PII Auto-Redaction"]
+    end
+
+    ReadOnly & WriteAction & MultiStep --> AIGuard
+
+    style ReadOnly fill:#E8F5E9,stroke:#2E7D32
+    style WriteAction fill:#FFF8E1,stroke:#F9A825
+    style MultiStep fill:#FFEBEE,stroke:#C62828
+    style AIGuard fill:#E8EAF6,stroke:#283593
+```

@@ -6,7 +6,18 @@
 flowchart TB
     subgraph UserLayer["👤 User Layer"]
         Employee["Employee"]
-        CopilotChat["Copilot Chat / CLI Interface"]
+        CopilotChat["Copilot Chat / CLI Interface\n(Teams / Outlook / Web)"]
+    end
+
+    subgraph AzureInfra["☁️ Azure Cloud Infrastructure"]
+        AOAI["Azure OpenAI Service\n(GPT-4o)"]
+        EntraID["Azure Entra ID\n(SSO + RBAC +\nConditional Access)"]
+        ContainerApps["Azure Container Apps\n(Agent Runtime)"]
+        KeyVault["Azure Key Vault\n(Secrets + Certs)"]
+        CosmosDB["Azure Cosmos DB\n(Audit Logs + State)"]
+        AppInsights["Application Insights\n(Distributed Tracing)"]
+        AzMonitor["Azure Monitor\n(Alerts + Dashboards)"]
+        ContentSafety["Azure AI Content Safety\n(PII + Jailbreak Defense)"]
     end
 
     subgraph AgentOrchestrator["🤖 Agent Orchestrator (Copilot SDK)"]
@@ -16,17 +27,18 @@ flowchart TB
     end
 
     subgraph SecurityLayer["🔒 Security Boundary Layer"]
-        AuthDelegation["Auth Delegation\n(SSO / Token Proxy)"]
+        AuthDelegation["Auth Delegation\n(Entra ID SSO / Token Proxy)"]
         URLAllowlist["URL Allowlisting\n(Domain & Path Rules)"]
         ApprovalGate["Action Approval Gate\n(Human-in-the-Loop)"]
-        AuditLog["Audit Log &\nCompliance Trail"]
+        AuditLog["Audit Log →\nCosmos DB"]
     end
 
-    subgraph ToolLayer["🛠️ Agent Tools"]
+    subgraph ToolLayer["🛠️ Agent Skills"]
         Navigate["navigate_page\n(URL navigation,\nclick, scroll)"]
         Extract["extract_content\n(Read & summarize\npage data)"]
         FillForm["fill_form\n(Input fields,\ndropdowns, dates)"]
         Submit["submit_action\n(Buttons, approvals,\nstate transitions)"]
+        GraphSkills["Microsoft Graph\n(Teams, Outlook,\nCalendar, Files)"]
     end
 
     subgraph APILayer["📡 Native API Integration Layer"]
@@ -39,6 +51,12 @@ flowchart TB
         Headless["Headless Browser\nInstance Pool"]
         DOMParser["DOM Parser &\nElement Selector"]
         SessionMgr["Session & Cookie\nManager"]
+    end
+
+    subgraph IntelligenceLayer["🧠 Microsoft Intelligence"]
+        Foundry["Microsoft Foundry\n(Agent Orchestration)"]
+        Fabric["Microsoft Fabric\n(Data Analytics +\nWorkflow Intelligence)"]
+        WorkIQ["Work IQ\n(Productivity Insights +\nViva Integration)"]
     end
 
     subgraph TargetApps["🏢 Target Web Applications"]
@@ -54,17 +72,29 @@ flowchart TB
         end
     end
 
-    %% User → Agent
+    %% User → Azure → Agent
     Employee -->|"Natural language request"| CopilotChat
-    CopilotChat -->|"Parsed intent"| Planner
+    CopilotChat -->|"Parsed intent"| AOAI
+    AOAI -->|"Planned tasks"| Planner
     Planner <-->|"State tracking"| Memory
     Planner -->|"Tool calls"| Router
+    ContainerApps -.->|"Hosts runtime"| AgentOrchestrator
+
+    %% Azure services
+    EntraID -->|"Auth tokens"| AuthDelegation
+    KeyVault -->|"Secrets"| AuthDelegation
+    ContentSafety -->|"Input/output screening"| SecurityLayer
+    AuditLog -->|"Write logs"| CosmosDB
+    AppInsights -.->|"Trace spans"| AgentOrchestrator
+    AppInsights --> AzMonitor
+    CosmosDB -->|"Change feed"| Fabric
 
     %% Router → Tools
-    Router -->|"Route to tool"| Navigate
-    Router -->|"Route to tool"| Extract
-    Router -->|"Route to tool"| FillForm
-    Router -->|"Route to tool"| Submit
+    Router -->|"Route to skill"| Navigate
+    Router -->|"Route to skill"| Extract
+    Router -->|"Route to skill"| FillForm
+    Router -->|"Route to skill"| Submit
+    Router -->|"Route to skill"| GraphSkills
 
     %% Tools → Security
     Navigate & Extract & FillForm & Submit -->|"All actions pass through"| SecurityLayer
@@ -95,6 +125,12 @@ flowchart TB
     Headless -->|"HTTP/S"| ECommerce
     Headless -->|"HTTP/S"| TravelBooking
 
+    %% Intelligence layer
+    Planner <-->|"Agent handoff"| Foundry
+    Fabric -->|"Workflow insights"| Planner
+    AppInsights -->|"Productivity signals"| WorkIQ
+    WorkIQ -->|"Efficiency metrics"| Fabric
+
     %% Results back to agent
     Extract -->|"Structured data /\nsummarized content"| Planner
     Submit -->|"Action result"| Planner
@@ -103,20 +139,24 @@ flowchart TB
 
     %% Styling
     classDef userStyle fill:#E3F2FD,stroke:#1565C0,color:#0D47A1
+    classDef azureStyle fill:#E8EAF6,stroke:#283593,color:#1A237E
     classDef agentStyle fill:#F3E5F5,stroke:#7B1FA2,color:#4A148C
     classDef securityStyle fill:#FFEBEE,stroke:#C62828,color:#B71C1C
     classDef toolStyle fill:#E8F5E9,stroke:#2E7D32,color:#1B5E20
     classDef apiStyle fill:#E8EAF6,stroke:#283593,color:#1A237E
     classDef browserStyle fill:#FFF3E0,stroke:#E65100,color:#BF360C
+    classDef intelStyle fill:#FCE4EC,stroke:#AD1457,color:#880E4F
     classDef internalStyle fill:#F1F8E9,stroke:#558B2F,color:#33691E
     classDef publicStyle fill:#FFF8E1,stroke:#F9A825,color:#F57F17
 
     class Employee,CopilotChat userStyle
+    class AOAI,EntraID,ContainerApps,KeyVault,CosmosDB,AppInsights,AzMonitor,ContentSafety azureStyle
     class Planner,Memory,Router agentStyle
     class AuthDelegation,URLAllowlist,ApprovalGate,AuditLog securityStyle
-    class Navigate,Extract,FillForm,Submit toolStyle
+    class Navigate,Extract,FillForm,Submit,GraphSkills toolStyle
     class APIConnectors,SchemaDiscovery,ResponseNorm apiStyle
     class Headless,DOMParser,SessionMgr browserStyle
+    class Foundry,Fabric,WorkIQ intelStyle
     class ServiceNow,Jira,Dashboards internalStyle
     class InvestorPages,ECommerce,TravelBooking publicStyle
 ```
@@ -125,12 +165,14 @@ flowchart TB
 
 | Layer | Purpose |
 |---|---|
-| **User Layer** | Employee interacts via natural language through Copilot Chat or CLI |
+| **User Layer** | Employee interacts via natural language through Copilot Chat (Teams / Outlook / Web) |
+| **Azure Cloud Infrastructure** | Azure OpenAI (GPT-4o), Entra ID (SSO + RBAC), Container Apps (runtime), Key Vault (secrets), Cosmos DB (audit), Monitor + App Insights (observability), AI Content Safety (RAI) |
 | **Agent Orchestrator** | Copilot SDK plans multi-step workflows, tracks context, and routes tool calls |
-| **Security Boundary** | Auth delegation (SSO/token proxy), URL allowlisting, human-in-the-loop approval gates, and full audit logging |
-| **Agent Tools** | Four core tools — `navigate_page`, `extract_content`, `fill_form`, `submit_action` |
+| **Security Boundary** | Azure Entra ID auth delegation, URL allowlisting, human-in-the-loop approval gates, Azure AI Content Safety screening, and Cosmos DB audit logging |
+| **Agent Skills** | Core skills — `navigate_page`, `extract_content`, `fill_form`, `submit_action`, plus Microsoft Graph skills for Teams/Outlook |
 | **Native API Integration** | Direct REST/GraphQL integration with target applications — the agent discovers and calls native APIs (OpenAPI/Swagger) exposed by enterprise apps, enabling faster and more reliable workflows than DOM manipulation |
 | **Browser Automation** | J-browser-agents manages headless browser instances, DOM parsing, and session/cookie handling |
+| **Microsoft Intelligence** | Microsoft Foundry for agent orchestration at scale; Microsoft Fabric for operational analytics and workflow intelligence; **Work IQ** for productivity measurement (time saved, focus hours, collaboration velocity) via Viva Insights |
 | **Target Apps** | Internal enterprise apps (ServiceNow, Jira, dashboards) and public/external sites (investor pages, e-commerce, travel portals) |
 
 ## Native API Integration
@@ -462,5 +504,197 @@ sequenceDiagram
 
 ## Related Files
 
-- **[agents.md](./agents.md)** — Agent types, M365 Copilot app packaging, declarative agent manifest, and API integration strategy
-- **[skills.md](./skills.md)** — Detailed skill definitions (`navigate_page`, `extract_content`, `fill_form`, `submit_action`, `discover_apis`, `compare_data`), API plugin spec, and security classifications
+- **[README.md](./README.md)** — Executive summary, "Operation Skyfall" demo scenario, Azure integration overview, ROI metrics, Copilot SDK feedback, customer validation
+- **[agents.md](./agents.md)** — Agent types, M365 Copilot app packaging, declarative agent manifest, Foundry integration, and API integration strategy
+- **[skills.md](./skills.md)** — Detailed skill definitions (`navigate_page`, `extract_content`, `fill_form`, `submit_action`, `discover_apis`, `compare_data`, Microsoft Graph skills), API plugin spec, Azure AI Content Safety integration, and security classifications
+
+---
+
+## Azure Cloud Infrastructure
+
+### Azure OpenAI Service
+
+The agent uses **Azure OpenAI Service (GPT-4o)** as its foundation model for:
+- **Task planning** — Decomposing natural language requests into multi-step skill invocation plans
+- **Intent recognition** — Mapping user prompts to the correct skills and parameters
+- **Response generation** — Synthesizing extracted data into human-readable summaries, tables, and executive briefs
+- **Error recovery** — When a skill fails, the model reasons about alternative approaches (e.g., switch from API to DOM path)
+
+### Azure Entra ID
+
+All authentication flows use **Azure Entra ID** with:
+- **SSO delegation** — Agent authenticates to target applications using the user's existing SSO session
+- **Conditional Access** — Policies enforce device compliance, location restrictions, and MFA requirements
+- **RBAC** — Fine-grained role-based access control determines which skills each user can invoke
+- **Token scoping** — Tokens are scoped per-application with minimum required permissions
+
+### Azure Container Apps
+
+The agent runtime is hosted on **Azure Container Apps** for:
+- **Auto-scaling** — Scales from 0 to N instances based on request volume (KEDA-driven)
+- **Revision management** — Blue/green deployments with instant rollback
+- **Managed identity** — No credentials in code; authenticates to Azure services via managed identity
+- **VNet integration** — Runs inside the corporate VNet for access to internal applications
+
+### Azure Key Vault
+
+All secrets are managed through **Azure Key Vault**:
+- SSO tokens and refresh tokens
+- API keys for third-party integrations
+- Browser session encryption keys
+- TLS certificates for internal communication
+
+### Azure Cosmos DB
+
+**Azure Cosmos DB** stores:
+- **Immutable audit logs** — Every agent action is logged with timestamp, user, skill, parameters, and result
+- **Workflow state** — Multi-step workflow progress and conversation memory
+- **Change feed** — Streams audit data to Microsoft Fabric for analytics
+
+### Observability Stack
+
+```mermaid
+flowchart LR
+    Agent["🤖 Agent Runtime"] -->|"Trace spans"| AppInsights["Application Insights"]
+    Agent -->|"Custom metrics"| AppInsights
+    Agent -->|"Structured logs"| AppInsights
+    AppInsights -->|"Alerts"| AzMonitor["Azure Monitor"]
+    AppInsights -->|"Dashboards"| Workbooks["Azure Workbooks"]
+    AzMonitor -->|"Notify"| Teams["Teams Channel\n(#agent-alerts)"]
+    Agent -->|"Audit events"| CosmosDB["Cosmos DB"]
+    CosmosDB -->|"Change feed"| Fabric["Microsoft Fabric"]
+    Fabric -->|"Visualize"| PowerBI["Power BI\nDashboard"]
+
+    classDef monitoring fill:#E8EAF6,stroke:#283593
+    class AppInsights,AzMonitor,Workbooks,CosmosDB,Fabric,PowerBI monitoring
+```
+
+**Application Insights** provides:
+- **Distributed tracing** — End-to-end trace from user prompt → Copilot SDK → security gate → browser/API → target app → response
+- **Custom metrics** — Skill invocation counts, API vs. DOM path ratio, approval rates, response times
+- **Live metrics** — Real-time dashboard showing active sessions, error rate, and throughput
+- **Failure analysis** — Automatic detection of skill failures with root cause analysis
+
+**Azure Monitor** provides:
+- **Alert rules** — Triggers on error rate > 1%, response time > 10s, approval timeout, Content Safety blocks
+- **Action groups** — Sends alerts to Teams channel, email, and PagerDuty
+- **SLA tracking** — Custom dashboards tracking agent availability and performance SLAs
+
+---
+
+## Responsible AI Architecture
+
+```mermaid
+flowchart TB
+    subgraph InputGuard["🛡️ Input Guard"]
+        JailbreakDetect["Jailbreak Detection\n(Azure AI Content Safety)"]
+        PromptSanitize["Prompt Sanitization\n(Injection Pattern Stripping)"]
+        InputClassify["Intent Classification\n(Allowed vs. Blocked Actions)"]
+    end
+
+    subgraph ExecutionGuard["⚙️ Execution Guard"]
+        InstructionHierarchy["Instruction Hierarchy\n(System > Agent > User)"]
+        ActionScope["Action Scope Enforcement\n(Skill Allowlist per Role)"]
+        PIIDetection["PII Detection\n(Azure AI Content Safety)"]
+    end
+
+    subgraph OutputGuard["📤 Output Guard"]
+        ContentFilter["Content Filtering\n(Harmful Content Detection)"]
+        PIIRedaction["PII Auto-Redaction\n(Names, SSNs, Emails)"]
+        GroundingCheck["Grounding Verification\n(Source Attribution)"]
+    end
+
+    UserInput["User Input"] --> InputGuard
+    InputGuard --> ExecutionGuard
+    ExecutionGuard --> OutputGuard
+    OutputGuard --> SafeResponse["Safe Response"]
+
+    classDef guard fill:#FFEBEE,stroke:#C62828
+    class JailbreakDetect,PromptSanitize,InputClassify,InstructionHierarchy,ActionScope,PIIDetection,ContentFilter,PIIRedaction,GroundingCheck guard
+```
+
+### RAI Principles Applied
+
+| Principle | How We Implement It |
+|---|---|
+| **Fairness** | Azure AI Content Safety evaluates all agent outputs for bias; agent instructions prohibit discriminatory actions; skill parameters are schema-validated to prevent skewed queries |
+| **Transparency** | Every action logged to Cosmos DB with full provenance; users see a step-by-step execution summary; audit trail is queryable by compliance teams |
+| **Privacy** | PII auto-detected and redacted via Content Safety; data residency controls per Azure region; screenshot PII masking; no customer data used for model training |
+| **Security** | Multi-layer prompt injection defense; jailbreak detection; credential isolation in Key Vault; zero secrets in code; Conditional Access enforcement |
+| **Accountability** | Human-in-the-loop approval for ALL write actions; immutable audit trail with tamper detection; Entra ID RBAC with principle of least privilege |
+| **Reliability** | Graceful degradation (API → DOM → error message); retry with exponential backoff; health check endpoints; circuit breaker patterns |
+| **Inclusiveness** | Agent responses support multiple languages; accessibility-aware output formatting; keyboard-navigable approval prompts in Teams |
+
+---
+
+## Microsoft Foundry & Fabric Integration
+
+### Foundry — Agent Orchestration at Scale
+
+```mermaid
+flowchart LR
+    subgraph Foundry["Microsoft Foundry"]
+        Registry["Agent Registry\n(Version Control)"]
+        Governance["Governance Policies\n(URL Lists, Approvals)"]
+        Handoff["Cross-Agent\nHandoff Protocol"]
+    end
+
+    BrowserAgent["🌐 Browser Agent"] --> Registry
+    Registry --> Governance
+    BrowserAgent <-->|"Handoff"| DataAgent["📊 Fabric Data Agent"]
+    BrowserAgent <-->|"Handoff"| CalendarAgent["📅 Graph Calendar Agent"]
+    BrowserAgent <-->|"Handoff"| EmailAgent["📧 Outlook Email Agent"]
+
+    classDef foundry fill:#F3E5F5,stroke:#7B1FA2
+    classDef agent fill:#E8F5E9,stroke:#2E7D32
+
+    class Registry,Governance,Handoff foundry
+    class BrowserAgent,DataAgent,CalendarAgent,EmailAgent agent
+```
+
+- **Agent Registry** — All browser agent instances are registered, versioned, and governed centrally
+- **Cross-Agent Handoff** — The browser agent can delegate sub-tasks to specialized Foundry agents (e.g., hand off analytics to a Fabric data agent)
+- **Centralized Governance** — IT admins manage URL allowlists, approval policies, and Content Safety thresholds through the Foundry control plane
+
+### Fabric — Data Intelligence
+
+Agent activity data flows into **Microsoft Fabric** lakehouse for:
+- **Usage Analytics** — Skill invocation patterns, most-accessed applications, peak usage times
+- **Workflow Optimization** — ML models identify bottleneck steps and suggest faster API paths
+- **Cost Analysis** — Azure OpenAI token usage, Container Apps compute, per-workflow ROI
+- **Compliance Reporting** — Auto-generated audit reports from Cosmos DB change feed data
+
+### Work IQ — Productivity Intelligence
+
+The agent integrates with **Work IQ** to quantify real productivity impact:
+
+```mermaid
+flowchart TB
+    subgraph WorkIQFlow["📊 Work IQ Productivity Loop"]
+        Measure["1. Measure\n(Time saved, focus hours,\ncontext switches avoided)"]
+        Analyze["2. Analyze\n(Compare to baseline,\nidentify patterns)"]
+        Recommend["3. Recommend\n(Suggest new workflows,\nexpand to new teams)"]
+        Report["4. Report\n(Viva Insights dashboard,\nPower BI, Fabric)"]
+    end
+
+    Measure --> Analyze --> Recommend --> Report --> Measure
+
+    AgentLogs["Agent Audit Logs"] --> Measure
+    GraphSignals["Graph Signals\n(Calendar, Email, Teams)"] --> Measure
+    Report --> VivaInsights["Viva Insights\n(Personal + Manager)"]
+    Report --> FabricDash["Fabric Dashboard\n(Org-Level)"]
+
+    classDef workiq fill:#E8F5E9,stroke:#2E7D32
+    classDef source fill:#E3F2FD,stroke:#1565C0
+    classDef output fill:#F3E5F5,stroke:#7B1FA2
+
+    class Measure,Analyze,Recommend,Report workiq
+    class AgentLogs,GraphSignals source
+    class VivaInsights,FabricDash output
+```
+
+- **Time Intelligence** — Measures actual hours saved per workflow vs. manual baseline (e.g., "Incident resolution saves 39 min per execution")
+- **Focus Time Recovery** — Tracks how agent automation frees up uninterrupted deep work blocks (correlates with Microsoft Graph calendar data)
+- **Collaboration Velocity** — Measures cross-team handoff speed improvement (e.g., "Cross-app onboarding reduced from 3 days to 45 minutes")
+- **Proactive Recommendations** — Surfaces insights like: "Your team's top 3 time-consuming workflows are all automatable — projected savings: 28 hrs/week"
+- **Viva Insights Integration** — Productivity metrics surface in employees' personal Viva Insights dashboard and managers' team analytics

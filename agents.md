@@ -4,7 +4,7 @@
 
 This system is built as a **Microsoft 365 Copilot declarative agent** that combines the Copilot SDK orchestrator with browser automation (J-browser-agents) and **Native API Integration** (direct REST/GraphQL calls to target applications) to navigate, read, and act on internal and external web applications on behalf of enterprise users.
 
-The agent is packaged and distributed through the Microsoft 365 app model, appearing contextually within Copilot Chat, Teams, Outlook, and other M365 surfaces.
+The agent is powered by **Azure OpenAI Service (GPT-4o)**, authenticated through **Azure Entra ID**, protected by **Azure AI Content Safety**, and orchestrated at scale via **Microsoft Foundry**. It is packaged and distributed through the Microsoft 365 app model, appearing contextually within Copilot Chat, Teams, Outlook, and other M365 surfaces.
 
 ---
 
@@ -104,8 +104,9 @@ The core agent that navigates web pages, extracts content, fills forms, and subm
 | **Orchestrator** | Microsoft 365 Copilot Orchestrator |
 | **Runtime** | Copilot SDK + J-browser-agents |
 | **Protocol** | Native API (REST/GraphQL preferred) → DOM scraping (fallback) |
-| **Auth** | Delegated SSO / Token Proxy |
+| **Auth** | Azure Entra ID SSO / Token Proxy with Conditional Access |
 | **Approval** | Human-in-the-loop for destructive actions |
+| **AI Safety** | Azure AI Content Safety for input/output screening |
 
 ### 2. Data Extraction Agent
 
@@ -298,5 +299,116 @@ sequenceDiagram
 
 ## Related Files
 
-- **[ARCHITECTURE.md](./ARCHITECTURE.md)** — Full system architecture diagram with all layers
-- **[skills.md](./skills.md)** — Detailed skill definitions and tool specifications
+- **[README.md](./README.md)** — Executive summary, "Operation Skyfall" demo, Azure integration, ROI metrics, Copilot SDK feedback, customer validation
+- **[ARCHITECTURE.md](./ARCHITECTURE.md)** — Full system architecture diagram with all layers, Azure infrastructure, Responsible AI, observability
+- **[skills.md](./skills.md)** — Detailed skill definitions, API plugin spec, Microsoft Graph skills, Azure AI Content Safety integration
+
+---
+
+## Azure Entra ID Authentication Flow
+
+All agent-to-application authentication uses **Azure Entra ID** with delegated token proxy:
+
+```mermaid
+sequenceDiagram
+    participant User as Employee
+    participant Copilot as M365 Copilot
+    participant Entra as Azure Entra ID
+    participant Agent as Browser Agent
+    participant KV as Azure Key Vault
+    participant App as Target App (ServiceNow)
+
+    User->>Copilot: "@BrowserAgent close ticket INC0042"
+    Copilot->>Entra: Validate user identity (SSO)
+    Entra->>Entra: Check Conditional Access policies
+    Entra-->>Copilot: ✅ User authenticated (token issued)
+
+    Copilot->>Agent: Execute with user context
+    Agent->>KV: Retrieve app-specific credentials
+    KV-->>Agent: ServiceNow OAuth token (scoped: read+write)
+
+    Agent->>Entra: Request delegated token for ServiceNow
+    Entra->>Entra: Validate RBAC (user has ITSM role)
+    Entra-->>Agent: Delegated token (scoped to user permissions)
+
+    Agent->>App: API call with delegated token
+    App-->>Agent: Response (user's permission level)
+```
+
+### Token Scoping by Skill
+
+| Skill | Minimum Required Permission | Token Scope |
+|---|---|---|
+| `navigate_page` | Read | `Application.Read` |
+| `extract_content` | Read | `Application.Read` |
+| `fill_form` | Read + Write | `Application.ReadWrite` |
+| `submit_action` | Read + Write + Execute | `Application.ReadWrite.All` |
+| `discover_apis` | Read | `Application.Read` |
+| Microsoft Graph skills | Varies | `Chat.ReadWrite`, `Mail.Send`, `Calendars.ReadWrite` |
+
+---
+
+## Microsoft Foundry Integration
+
+The browser agent registers with **Microsoft Foundry** for enterprise-scale agent management:
+
+```mermaid
+flowchart TB
+    subgraph Foundry["Microsoft Foundry Control Plane"]
+        Registry["Agent Registry"]
+        Governance["Governance\n(Policies + Compliance)"]
+        Analytics["Agent Analytics\n(Usage + Performance)"]
+    end
+
+    subgraph Agents["Registered Agents"]
+        Browser["🌐 Browser Agent\nv1.2.0"]
+        Data["📊 Fabric Data Agent"]
+        Email["📧 Outlook Agent"]
+        Calendar["📅 Calendar Agent"]
+    end
+
+    Registry --> Browser
+    Registry --> Data
+    Registry --> Email
+    Registry --> Calendar
+    Governance -->|"URL allowlists\nApproval policies"| Browser
+    Browser <-->|"Handoff"| Data
+    Browser <-->|"Handoff"| Email
+    Browser <-->|"Handoff"| Calendar
+    Browser --> Analytics
+
+    classDef foundry fill:#F3E5F5,stroke:#7B1FA2
+    classDef agent fill:#E8F5E9,stroke:#2E7D32
+
+    class Registry,Governance,Analytics foundry
+    class Browser,Data,Email,Calendar agent
+```
+
+### Cross-Agent Handoff Scenarios
+
+| Scenario | Browser Agent Does | Hands Off To |
+|---|---|---|
+| Financial report + analysis | Extracts data from IR pages | **Fabric Data Agent** for statistical analysis |
+| Incident + stakeholder notification | Reads incident details | **Outlook Agent** to email stakeholders |
+| Onboarding + calendar setup | Creates accounts across apps | **Calendar Agent** to schedule orientation meetings |
+| Compliance audit + reporting | Scrapes regulatory filings | **Fabric Data Agent** for compliance dashboard |
+
+---
+
+## Microsoft Fabric Analytics & Work IQ
+
+Agent activity data streams into **Microsoft Fabric** via Cosmos DB change feed:
+
+- **Usage Dashboards** — Skill invocation patterns, most-accessed apps, peak hours, user adoption curves
+- **Workflow Intelligence** — ML models identify bottleneck steps and recommend faster paths (e.g., "ServiceNow API is 3x faster than DOM for ticket updates")
+- **Cost Optimization** — Track Azure OpenAI token consumption, Container Apps compute costs, and per-workflow ROI
+- **Compliance Reporting** — Auto-generated audit reports with tamper-proof provenance from Cosmos DB
+
+### Work IQ Integration
+
+The agent feeds productivity signals into **Work IQ** via Microsoft Graph and Viva Insights:
+
+- **Personal Insights** — Each user sees their time saved, focus hours recovered, and workflows automated in Viva Insights
+- **Manager Analytics** — Team leads see aggregate productivity impact and can identify high-ROI workflows to expand
+- **Org-Level ROI** — Executive dashboards show enterprise-wide savings with department-by-department breakdown
+- **Proactive Recommendations** — Work IQ surfaces suggestions like: "The Engineering team manually updates 47 Jira tickets/week from ServiceNow data — this workflow is automatable with projected savings of 12 hrs/week"
