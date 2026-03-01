@@ -33,11 +33,26 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
           name: 'agent'
           image: containerImage
           env: [
-            { name: 'KEY_VAULT_URL'; value: keyVaultUrl }
-            { name: 'COSMOS_ENDPOINT'; value: cosmosEndpoint }
-            { name: 'AZURE_OPENAI_ENDPOINT'; value: openAIEndpoint }
-            { name: 'CONTENT_SAFETY_ENDPOINT'; value: contentSafetyEndpoint }
-            { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'; value: appInsightsConnectionString }
+            {
+              name: 'KEY_VAULT_URL'
+              value: keyVaultUrl
+            }
+            {
+              name: 'COSMOS_ENDPOINT'
+              value: cosmosEndpoint
+            }
+            {
+              name: 'AZURE_OPENAI_ENDPOINT'
+              value: openAIEndpoint
+            }
+            {
+              name: 'CONTENT_SAFETY_ENDPOINT'
+              value: contentSafetyEndpoint
+            }
+            {
+              name: 'APPLICATIONINSIGHTS_CONNECTION_STRING'
+              value: appInsightsConnectionString
+            }
           ]
         }
       ]
