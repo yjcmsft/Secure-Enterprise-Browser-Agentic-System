@@ -34,4 +34,21 @@ describe("ContentSafetyGuard fallback", () => {
     expect(result.allowed).toBe(true);
     expect(result.redactedText).toContain("[REDACTED]");
   });
+
+  test("redacts person names but preserves common business phrases", async () => {
+    const text = "Contact John Smith about the Annual Report and Operating Income figures";
+    const result = await guard.screenOutput(text);
+    expect(result.allowed).toBe(true);
+    expect(result.redactedText).not.toContain("John Smith");
+    expect(result.redactedText).toContain("Annual Report");
+    expect(result.redactedText).toContain("Operating Income");
+  });
+
+  test("preserves geographic names in whitelist", async () => {
+    const text = "The New York office prepared the United States filing";
+    const result = await guard.screenOutput(text);
+    expect(result.allowed).toBe(true);
+    expect(result.redactedText).toContain("New York");
+    expect(result.redactedText).toContain("United States");
+  });
 });

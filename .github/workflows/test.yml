@@ -19,6 +19,6 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run typecheck
-      - run: npm test
+      - run: npm run test:coverage
       - uses: microsoft/security-devops-action@v1
       - run: az bicep build --file infra/main.bicep

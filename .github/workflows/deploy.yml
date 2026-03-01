@@ -24,7 +24,7 @@ jobs:
       - uses: microsoft/security-devops-action@v1
       - run: npm run lint
       - run: npm run typecheck
-      - run: npm test
+      - run: npm run test:coverage
       - run: az bicep build --file infra/main.bicep
 
   deploy-staging:

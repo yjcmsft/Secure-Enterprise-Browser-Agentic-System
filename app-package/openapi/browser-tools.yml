@@ -2,113 +2,297 @@ openapi: 3.0.3
 info:
   title: Secure Browser Tools API
   version: 1.0.0
+  description: >-
+    API surface for the Secure Enterprise Browser Agent. Each endpoint
+    executes a skill through the security gate pipeline (URL allowlist,
+    content safety, approval gate, audit logging).
 servers:
   - url: https://agent.example.com
 paths:
   /api/skills/navigate_page:
     post:
       operationId: navigate_page
-      summary: Navigate to page
+      summary: Navigate to a URL, optionally click an element or wait for a selector
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              properties:
+                params:
+                  type: object
+                  properties:
+                    url:
+                      type: string
+                      description: The URL to navigate to (must be on the allowlist)
+                    waitFor:
+                      type: string
+                      description: Optional CSS selector to wait for after navigation
+                    clickText:
+                      type: string
+                      description: Optional visible text of an element to click after page load
+                  required:
+                    - url
+                userId:
+                  type: string
+                sessionId:
+                  type: string
+              required:
+                - params
+                - userId
+                - sessionId
       responses:
         "200":
-          description: OK
+          description: Navigation result with page title and URL
+        "403":
+          description: URL blocked by allowlist or content safety
   /api/skills/extract_content:
     post:
       operationId: extract_content
-      summary: Extract page content
+      summary: Extract structured content from the current page or a URL
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              properties:
+                params:
+                  type: object
+                  properties:
+                    url:
+                      type: string
+                      description: Optional URL to navigate to before extraction
+                    mode:
+                      type: string
+                      enum: [table, text, links, form_values, all]
+                      description: Type of content to extract (default is all)
+                  required: []
+                userId:
+                  type: string
+                sessionId:
+                  type: string
+              required:
+                - params
+                - userId
+                - sessionId
       responses:
         "200":
-          description: OK
+          description: Extracted content (tables, text blocks, links, or all)
   /api/skills/fill_form:
     post:
       operationId: fill_form
-      summary: Fill form values
+      summary: Populate form fields with provided values (requires approval)
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              properties:
+                params:
+                  type: object
+                  properties:
+                    url:
+                      type: string
+                      description: Optional URL of the page containing the form
+                    fields:
+                      type: object
+                      additionalProperties:
+                        oneOf:
+                          - type: string
+                          - type: boolean
+                      description: "Map of field name → value to fill"
+                  required:
+                    - fields
+                userId:
+                  type: string
+                sessionId:
+                  type: string
+              required:
+                - params
+                - userId
+                - sessionId
       responses:
         "200":
-          description: OK
+          description: List of filled field names
+        "403":
+          description: Approval denied or URL blocked
   /api/skills/submit_action:
     post:
       operationId: submit_action
-      summary: Submit state-changing action
+      summary: Trigger a button click or form submission (requires approval)
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              properties:
+                params:
+                  type: object
+                  properties:
+                    url:
+                      type: string
+                      description: Optional URL of the page with the action
+                    selector:
+                      type: string
+                      description: "CSS selector for the element to click (default: button[type='submit'])"
+                    payload:
+                      type: object
+                      description: Optional payload for API-path POST
+                  required: []
+                userId:
+                  type: string
+                sessionId:
+                  type: string
+              required:
+                - params
+                - userId
+                - sessionId
       responses:
         "200":
-          description: OK
+          description: Submission result
+        "403":
+          description: Approval denied or URL blocked
   /api/skills/discover_apis:
     post:
       operationId: discover_apis
-      summary: Discover REST/GraphQL endpoints
+      summary: Probe a target application for REST/GraphQL API endpoints
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              properties:
+                params:
+                  type: object
+                  properties:
+                    baseUrl:
+                      type: string
+                      description: Base URL of the target application to probe for OpenAPI/Swagger specs
+                  required:
+                    - baseUrl
+                userId:
+                  type: string
+                sessionId:
+                  type: string
+              required:
+                - params
+                - userId
+                - sessionId
       responses:
         "200":
-          description: OK
+          description: Discovered API schema with endpoints
   /api/skills/capture_screenshot:
     post:
       operationId: capture_screenshot
-      summary: Capture screenshot
+      summary: Capture a screenshot of the current page or a specific element
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              properties:
+                params:
+                  type: object
+                  properties:
+                    selector:
+                      type: string
+                      description: Optional CSS selector to screenshot a specific element (full page if omitted)
+                  required: []
+                userId:
+                  type: string
+                sessionId:
+                  type: string
+              required:
+                - params
+                - userId
+                - sessionId
       responses:
         "200":
-          description: OK
+          description: Base64-encoded screenshot image
   /api/skills/compare_data:
     post:
       operationId: compare_data
-      summary: Compare extracted data across sources
+      summary: Extract and compare data from multiple URLs in parallel
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              properties:
+                params:
+                  type: object
+                  properties:
+                    urls:
+                      type: array
+                      items:
+                        type: string
+                      description: List of URLs to navigate to and extract data from
+                    mode:
+                      type: string
+                      enum: [table, text, links, all]
+                      description: Extraction mode for each source (default is all)
+                  required:
+                    - urls
+                userId:
+                  type: string
+                sessionId:
+                  type: string
+              required:
+                - params
+                - userId
+                - sessionId
       responses:
         "200":
-          description: OK
+          description: Comparison table with extracted data from each source
   /api/skills/orchestrate_workflow:
     post:
       operationId: orchestrate_workflow
-      summary: Execute a multi-step workflow
+      summary: Execute a multi-step workflow of chained skill invocations
       requestBody:
         required: true
         content:
           application/json:
             schema:
               type: object
+              properties:
+                params:
+                  type: object
+                  properties:
+                    steps:
+                      type: array
+                      items:
+                        type: object
+                        properties:
+                          skill:
+                            type: string
+                            description: Skill name to invoke
+                          params:
+                            type: object
+                            description: Parameters for the skill
+                        required:
+                          - skill
+                          - params
+                      description: Ordered list of skill invocations (max 25)
+                  required:
+                    - steps
+                userId:
+                  type: string
+                sessionId:
+                  type: string
+              required:
+                - params
+                - userId
+                - sessionId
       responses:
         "200":
-          description: OK
+          description: Workflow result with per-step outcomes
   /api/skills/send_teams_message:
     post:
       operationId: send_teams_message

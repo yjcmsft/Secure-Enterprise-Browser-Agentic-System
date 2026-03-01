@@ -1,4 +1,5 @@
 import express from "express";
+import rateLimit from "express-rate-limit";
 import { randomUUID } from "node:crypto";
 import { createLogger, format, transports } from "winston";
 import { config } from "./config.js";
@@ -18,6 +19,19 @@ const logger = createLogger({
 });
 
 app.use(express.json({ limit: "2mb" }));
+
+// ---------------------------------------------------------------------------
+// Rate limiting — protects all API endpoints from abuse
+// ---------------------------------------------------------------------------
+const apiLimiter = rateLimit({
+  windowMs: 60 * 1000, // 1 minute
+  max: 100,            // 100 requests per window per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: "Too many requests, please try again later" },
+});
+
+app.use("/api/", apiLimiter);
 
 function resolveRequestId(req: express.Request, res: express.Response): string {
   const requestIdFromHeader = req.headers["x-request-id"];
