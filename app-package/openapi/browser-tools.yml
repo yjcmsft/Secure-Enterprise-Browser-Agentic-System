@@ -109,3 +109,100 @@ paths:
       responses:
         "200":
           description: OK
+  /api/skills/send_teams_message:
+    post:
+      operationId: send_teams_message
+      summary: Send a message or adaptive card to a Teams channel or chat
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                channelId:
+                  type: string
+                  description: Teams channel or chat ID
+                content:
+                  type: string
+                  description: Message content (markdown supported)
+                cardPayload:
+                  type: object
+                  description: Optional adaptive card JSON payload
+              required:
+                - channelId
+                - content
+      responses:
+        "200":
+          description: OK
+  /api/skills/create_adaptive_card:
+    post:
+      operationId: create_adaptive_card
+      summary: Generate an adaptive card from structured data
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                data:
+                  type: object
+                  description: Structured data to render
+                style:
+                  type: string
+                  enum: [compact, detailed, executive]
+                  description: Card layout style
+              required:
+                - data
+      responses:
+        "200":
+          description: OK
+  /api/skills/manage_calendar:
+    post:
+      operationId: manage_calendar
+      summary: Create, read, or update Outlook calendar events
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                action:
+                  type: string
+                  enum: [create, read, update, findAvailability]
+                  description: Calendar operation to perform
+                event:
+                  type: object
+                  description: Event details (subject, start, end, attendees)
+              required:
+                - action
+      responses:
+        "200":
+          description: OK
+  /api/skills/analyze_work_patterns:
+    post:
+      operationId: analyze_work_patterns
+      summary: Analyze productivity metrics and work patterns
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                scope:
+                  type: string
+                  enum: [personal, team, organization]
+                  description: Analysis scope
+                metrics:
+                  type: array
+                  items:
+                    type: string
+                  description: Metrics to compute (time_saved, focus_time_recovered, etc.)
+              required:
+                - scope
+      responses:
+        "200":
+          description: OK
