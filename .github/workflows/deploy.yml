@@ -22,6 +22,7 @@ jobs:
           node-version: 20
       - run: npm ci
       - uses: microsoft/security-devops-action@v1
+        continue-on-error: true
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run test:coverage

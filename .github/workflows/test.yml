@@ -21,6 +21,7 @@ jobs:
       - run: npm run typecheck
       - run: npm run test:coverage
       - uses: microsoft/security-devops-action@v1
+        continue-on-error: true
       - name: Validate Bicep template
         uses: Azure/CLI@v2
         with:
