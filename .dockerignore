@@ -1,0 +1,17 @@
+node_modules
+dist
+.git
+.github
+tests
+*.md
+*.bat
+*.py
+*.log
+.dockerignore
+Dockerfile
+vitest.config.ts
+eslint.config.js
+tsconfig.json
+scripts
+infra
+app-package

@@ -9,10 +9,10 @@ RUN npm run build
 
 # Production stage
 FROM node:20-slim
-RUN npx playwright install --with-deps chromium
 WORKDIR /app
 COPY package.json package-lock.json* ./
 RUN npm ci --omit=dev
+RUN npx playwright install --with-deps chromium
 COPY --from=builder /app/dist ./dist
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
