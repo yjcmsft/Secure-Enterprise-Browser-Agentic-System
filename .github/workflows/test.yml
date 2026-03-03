@@ -20,8 +20,13 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run test:coverage
-      - uses: microsoft/security-devops-action@v1
+      - name: Run Microsoft Security DevOps
+        id: msdo
+        uses: microsoft/security-devops-action@v1
         continue-on-error: true
+      - name: Security scan non-blocking notice
+        if: ${{ steps.msdo.outcome == 'failure' }}
+        run: echo "::notice::Security scan found findings; continuing because this check is configured as non-blocking."
       - name: Validate Bicep template
         uses: Azure/CLI@v2
         with:
