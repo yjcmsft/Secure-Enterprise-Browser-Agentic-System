@@ -2,7 +2,14 @@
   "name": "secure-enterprise-browser-agent",
   "version": "1.0.0",
   "description": "A Microsoft 365 Copilot declarative agent that securely navigates, reads, and acts across enterprise web applications",
-  "main": "dist/index.js",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "import": "./dist/index.js",
+      "types": "./dist/index.d.ts"
+    }
+  },
   "type": "module",
   "scripts": {
     "build": "tsc",
@@ -35,7 +42,7 @@
     "@azure/cosmos": "^4.2.0",
     "@azure/identity": "^4.5.0",
     "@azure/keyvault-secrets": "^4.9.0",
-    "@github/copilot-sdk": "^0.1.29",
+    "@github/copilot-sdk": "^0.1.8",
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "axios": "^1.7.9",
     "express": "^4.21.1",
@@ -69,7 +76,6 @@
     "url": "git+https://github.com/yjcmsft/Secure-Enterprise-Browser-Agentic-System.git"
   },
   "author": "",
-  "types": "./dist/index.d.ts",
   "bugs": {
     "url": "https://github.com/yjcmsft/Secure-Enterprise-Browser-Agentic-System/issues"
   },
