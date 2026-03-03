@@ -25,7 +25,10 @@ jobs:
       - run: npm run lint
       - run: npm run typecheck
       - run: npm run test:coverage
-      - run: az bicep build --file infra/main.bicep
+      - name: Validate Bicep template
+        uses: Azure/CLI@v2
+        with:
+          inlineScript: az bicep build --file infra/main.bicep
 
   deploy-staging:
     needs: test
