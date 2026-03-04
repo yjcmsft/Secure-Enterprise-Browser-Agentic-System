@@ -1,5 +1,9 @@
 /**
- * Copilot SDK integration — registers browser agent skills as Copilot tools.
+ * @deprecated This module is superseded by foundry-agent.ts + agui-handler.ts.
+ * It remains for reference. The active agent integration uses Azure AI Foundry
+ * Agent Service (@azure/ai-projects) with AG-UI protocol streaming.
+ *
+ * Previous Copilot SDK integration — registered browser agent skills as Copilot tools.
  *
  * This module creates a CopilotClient, defines each skill as a typed tool
  * using raw JSON schemas (compatible with Zod v3), and exposes lifecycle

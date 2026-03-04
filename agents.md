@@ -2,9 +2,9 @@
 
 ## Overview
 
-This system is built as a **Microsoft 365 Copilot declarative agent** that combines the Copilot SDK orchestrator with browser automation (J-browser-agents) and **Native API Integration** (direct REST/GraphQL calls to target applications) to navigate, read, and act on internal and external web applications on behalf of enterprise users.
+This system is built as an **Azure AI Foundry Agent Service** (pro-code) application that combines the Microsoft Agent Framework with browser automation (J-browser-agents) and **Native API Integration** (direct REST/GraphQL calls to target applications) to navigate, read, and act on internal and external web applications on behalf of enterprise users.
 
-The agent is powered by **Azure OpenAI Service (GPT-4o)**, authenticated through **Azure Entra ID**, protected by **Azure AI Content Safety**, and orchestrated at scale via **Microsoft Foundry**. It is packaged and distributed through the Microsoft 365 app model, appearing contextually within Copilot Chat, Teams, Outlook, and other M365 surfaces.
+The agent is powered by **Azure OpenAI Service (GPT-4o)** via the Azure AI Foundry Agent Service, authenticated through **Azure Entra ID**, protected by **Azure AI Content Safety**, and streamed to frontends via the **AG-UI protocol** (compatible with CopilotKit). It exposes Server-Sent Events (SSE) for real-time streaming updates, tool call progress, and shared state between agent and frontend.
 
 ---
 
@@ -12,17 +12,21 @@ The agent is powered by **Azure OpenAI Service (GPT-4o)**, authenticated through
 
 ```mermaid
 flowchart TB
-    subgraph M365["Microsoft 365 Copilot Platform"]
-        Orchestrator["Copilot Orchestrator\n(Foundation Models + RAG)"]
-        AgentRuntime["Declarative Agent Runtime"]
-        CopilotUI["Copilot Chat UI\n(Teams / Outlook / Web)"]
+    subgraph Frontend["🖥️ Frontend (AG-UI / CopilotKit)"]
+        CopilotKitUI["CopilotKit React UI\n(useAgent hook)"]
+        AGUI["AG-UI Protocol\n(SSE Event Stream)"]
     end
 
-    subgraph AgentPackage["📦 Browser Agent App Package"]
-        Manifest["manifest.json\n(M365 App Manifest v1.18+)"]
-        AgentDef["declarativeAgent.json\n(Instructions + Capabilities)"]
-        PluginDef["browserPlugin.json\n(API Plugin Manifest)"]
-        Icons["color.png + outline.png"]
+    subgraph AgentServer["🔧 Agent Server (Express + AG-UI Handler)"]
+        SSEEndpoint["SSE Streaming Endpoint\n(/api/agui/stream)"]
+        StateEndpoint["Shared State Endpoint\n(/api/agui/state/:sessionId)"]
+        RESTApi["REST API\n(/api/skills/:skillName)"]
+    end
+
+    subgraph FoundryService["☁️ Azure AI Foundry Agent Service"]
+        AIProject["AIProjectClient\n(@azure/ai-projects)"]
+        FoundryAgent["Foundry Agent\n(GPT-4o + Function Tools)"]
+        ThreadMgr["Thread & Run Manager"]
     end
 
     subgraph BrowserAgentCore["🤖 Browser Agent Core"]
@@ -32,7 +36,7 @@ flowchart TB
     end
 
     subgraph SecurityBoundary["🔒 Security Boundary"]
-        AuthProxy["Auth Delegation\n(SSO / Token Proxy)"]
+        AuthProxy["Auth Delegation\n(Azure Entra ID SSO)"]
         URLGate["URL Allowlist Gate"]
         ApprovalGate["Action Approval Gate\n(Human-in-the-Loop)"]
         Audit["Audit Logger"]
@@ -49,11 +53,16 @@ flowchart TB
         External["External Sites\n(IR Pages, SEC Filings,\nTravel, E-Commerce)"]
     end
 
-    %% M365 Platform → Agent
-    CopilotUI -->|"User prompt"| Orchestrator
-    Orchestrator -->|"Route to agent"| AgentRuntime
-    AgentRuntime -->|"Load config"| AgentPackage
-    AgentRuntime -->|"Execute"| BrowserAgentCore
+    %% Frontend → Agent Server
+    CopilotKitUI -->|"User prompt"| AGUI
+    AGUI -->|"POST /api/agui/stream"| SSEEndpoint
+    SSEEndpoint -->|"AG-UI events (SSE)"| AGUI
+
+    %% Agent Server → Foundry
+    SSEEndpoint --> AIProject
+    AIProject --> FoundryAgent
+    FoundryAgent -->|"Function calls"| ThreadMgr
+    ThreadMgr -->|"Tool invocations"| ToolRouter
 
     %% Agent Core → Security → Browser
     Planner <--> Memory
@@ -63,31 +72,80 @@ flowchart TB
     SecurityBoundary -->|"Fallback path"| DOMFallback
     APIIntegration --> JBrowser
     DOMFallback --> JBrowser
-    ApprovalGate -.->|"Confirm destructive actions"| CopilotUI
+    ApprovalGate -.->|"Approval events"| SSEEndpoint
 
     %% Browser → Targets
     JBrowser --> Internal
     JBrowser --> External
 
     %% Results back
-    JBrowser -->|"Structured data"| Planner
-    Planner -->|"Response"| Orchestrator
-    Orchestrator -->|"Answer"| CopilotUI
+    JBrowser -->|"Structured data"| ToolRouter
+    ToolRouter -->|"Tool outputs"| ThreadMgr
+    ThreadMgr -->|"Agent response"| SSEEndpoint
 
     %% Styling
-    classDef m365 fill:#E3F2FD,stroke:#1565C0,color:#0D47A1
-    classDef pkg fill:#F3E5F5,stroke:#7B1FA2,color:#4A148C
+    classDef frontend fill:#E3F2FD,stroke:#1565C0,color:#0D47A1
+    classDef server fill:#F3E5F5,stroke:#7B1FA2,color:#4A148C
+    classDef foundry fill:#E8EAF6,stroke:#283593,color:#1A237E
     classDef core fill:#EDE7F6,stroke:#512DA8,color:#311B92
     classDef sec fill:#FFEBEE,stroke:#C62828,color:#B71C1C
     classDef browser fill:#FFF3E0,stroke:#E65100,color:#BF360C
     classDef target fill:#E8F5E9,stroke:#2E7D32,color:#1B5E20
 
-    class Orchestrator,AgentRuntime,CopilotUI m365
-    class Manifest,AgentDef,PluginDef,Icons pkg
+    class CopilotKitUI,AGUI frontend
+    class SSEEndpoint,StateEndpoint,RESTApi server
+    class AIProject,FoundryAgent,ThreadMgr foundry
     class Planner,Memory,ToolRouter core
     class AuthProxy,URLGate,ApprovalGate,Audit sec
     class JBrowser,APIIntegration,DOMFallback browser
     class Internal,External target
+```
+
+---
+
+## AG-UI Protocol Integration
+
+The agent server implements the **AG-UI (Agent-User Interaction) protocol** — an open, event-driven streaming standard for bidirectional communication between AI agents and frontends.
+
+### AG-UI Event Types
+
+| Category | Events | Purpose |
+|---|---|---|
+| **Lifecycle** | `RUN_STARTED`, `RUN_FINISHED`, `RUN_ERROR` | Track agent execution lifecycle |
+| **Messages** | `TEXT_MESSAGE_START`, `TEXT_MESSAGE_CONTENT`, `TEXT_MESSAGE_END` | Stream LLM response tokens |
+| **Tool Calls** | `TOOL_CALL_START`, `TOOL_CALL_ARGS`, `TOOL_CALL_END` | Show real-time skill execution |
+| **State** | `STATE_SNAPSHOT`, `STATE_DELTA` | Sync shared state with frontend |
+
+### Why AG-UI + CopilotKit?
+
+| Aspect | Without AG-UI | With AG-UI |
+|---|---|---|
+| **Streaming** | Poll-based, delayed responses | Real-time SSE token streaming |
+| **Tool Visibility** | Opaque — user waits blindly | Live tool call progress in UI |
+| **Shared State** | Manual sync between agent and UI | Automatic state snapshots |
+| **Frontend Flexibility** | Locked to one UI framework | Any AG-UI-compatible frontend |
+| **Interoperability** | Custom protocol per agent | Open standard across all agents |
+
+### CopilotKit Frontend Integration
+
+```typescript
+import { useAgent } from "@copilotkit/react-core";
+
+function BrowserAgentUI() {
+  const { messages, state, sendMessage, isLoading } = useAgent({
+    endpoint: "https://your-server.com/api/agui/stream",
+  });
+
+  return (
+    <div>
+      {messages.map(msg => <ChatBubble key={msg.id} {...msg} />)}
+      {state.lastSkill && <ToolProgress skill={state.lastSkill} />}
+      <input onKeyPress={e =>
+        e.key === 'Enter' ? sendMessage(e.target.value) : null
+      } disabled={isLoading} />
+    </div>
+  );
+}
 ```
 
 ---
@@ -100,10 +158,10 @@ The core agent that navigates web pages, extracts content, fills forms, and subm
 
 | Property | Value |
 |---|---|
-| **Type** | Declarative Agent (M365 Copilot) |
-| **Orchestrator** | Microsoft 365 Copilot Orchestrator |
-| **Runtime** | Copilot SDK + J-browser-agents |
-| **Protocol** | Native API (REST/GraphQL preferred) → DOM scraping (fallback) |
+| **Type** | Azure AI Foundry Agent (pro-code) |
+| **Orchestrator** | Azure AI Foundry Agent Service |
+| **Runtime** | @azure/ai-projects + J-browser-agents |
+| **Protocol** | AG-UI (SSE) for frontend, Native API (REST/GraphQL preferred) → DOM scraping (fallback) for targets |
 | **Auth** | Azure Entra ID SSO / Token Proxy with Conditional Access |
 | **Approval** | Human-in-the-loop for destructive actions |
 | **AI Safety** | Azure AI Content Safety for input/output screening |
@@ -132,84 +190,18 @@ Orchestrates multi-step, cross-application workflows spanning multiple web apps 
 
 ---
 
-## M365 App Package Structure
+## Agent Package Structure
 
 ```
-secure-browser-agent/
-├── manifest.json                  # M365 App Manifest (v1.18+)
-├── declarativeAgent.json          # Agent instructions & capabilities
-├── browserPlugin.json             # API plugin (browser automation skills)
+app-package/
+├── manifest.json                  # Agent manifest (Azure AI Foundry)
+├── declarativeAgent.json          # Agent config (model, instructions, streaming)
+├── browserPlugin.json             # Function tool definitions
 ├── openapi/
 │   ├── browser-tools.yml          # OpenAPI spec for browser tools
 │   └── api-connectors.yml         # OpenAPI spec for native API connectors
 ├── color.png                      # 192x192 color icon
 └── outline.png                    # 32x32 outline icon
-```
-
-### manifest.json (Simplified)
-
-```json
-{
-  "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.18/MicrosoftTeams.schema.json",
-  "manifestVersion": "1.18",
-  "version": "1.0.0",
-  "id": "{{AGENT_APP_ID}}",
-  "developer": {
-    "name": "Enterprise Browser Agent",
-    "websiteUrl": "https://github.com/example/secure-browser-agent",
-    "privacyUrl": "https://example.com/privacy",
-    "termsOfUseUrl": "https://example.com/terms"
-  },
-  "name": {
-    "short": "Browser Agent",
-    "full": "Secure Enterprise Browser Agent"
-  },
-  "description": {
-    "short": "Navigate, read, and act on web apps securely",
-    "full": "An AI agent that navigates internal and external web applications on behalf of the user — reading, summarizing, and taking actions — with enterprise security controls including auth delegation, URL allowlisting, and action approval gates."
-  },
-  "icons": {
-    "color": "color.png",
-    "outline": "outline.png"
-  },
-  "accentColor": "#1565C0",
-  "copilotAgents": {
-    "declarativeAgents": [
-      {
-        "id": "browser-agent",
-        "file": "declarativeAgent.json"
-      }
-    ]
-  }
-}
-```
-
-### declarativeAgent.json
-
-```json
-{
-  "$schema": "https://developer.microsoft.com/json-schemas/copilot/declarative-agent/v1.6/schema.json",
-  "version": "v1.6",
-  "name": "Secure Browser Agent",
-  "description": "Navigates enterprise web apps, extracts data, fills forms, and submits actions with security controls.",
-  "instructions": "You are a secure enterprise browser agent. You help users interact with internal web applications (ServiceNow, Jira, Workday, Grafana, etc.) and external sites (investor relations, SEC filings, travel portals). Always: (1) Check URL allowlist before navigating, (2) Use native REST/GraphQL APIs when available, fall back to DOM scraping, (3) Request user approval before any write/submit action, (4) Log all actions to audit trail. Never: navigate to URLs outside the allowlist, submit forms without explicit user approval, or expose auth tokens in responses.",
-  "conversation_starters": [
-    { "text": "Pull the SUMMARY RESULTS OF OPERATIONS from Microsoft's 2024 annual report" },
-    { "text": "Close ServiceNow ticket INC0042 and link it to the Jira bug" },
-    { "text": "Show me the error rate from the Grafana payments dashboard for the last hour" },
-    { "text": "Book the cheapest direct flight from Seattle to New York on March 15" },
-    { "text": "Start onboarding for new hire Jane Doe across Workday, Jira, and ServiceNow" }
-  ],
-  "capabilities": [
-    { "name": "CodeInterpreter" }
-  ],
-  "actions": [
-    {
-      "id": "browser-tools",
-      "file": "browserPlugin.json"
-    }
-  ]
-}
 ```
 
 ---
@@ -247,7 +239,7 @@ flowchart LR
     style DOMPath_detail fill:#FFF3E0,stroke:#E65100
 ```
 
-### Why Native API Integration + M365 Copilot?
+### Why Native API Integration + Azure AI Foundry?
 
 | Aspect | Without Native APIs | With Native APIs |
 |---|---|---|
@@ -271,35 +263,42 @@ flowchart LR
 ```mermaid
 sequenceDiagram
     participant Admin as IT Admin
-    participant Store as M365 Admin Center
+    participant Foundry as Azure AI Foundry
     participant User as Employee
-    participant Copilot as M365 Copilot
-    participant Agent as Browser Agent
+    participant Frontend as CopilotKit UI
+    participant Server as Agent Server
+    participant Agent as Foundry Agent
 
-    Note over Admin,Store: Deployment Phase
-    Admin->>Store: Upload app package (.zip)
-    Store->>Store: Validate manifest + RAI checks
-    Store->>Store: Approve & publish to tenant
+    Note over Admin,Foundry: Deployment Phase
+    Admin->>Foundry: Deploy agent via Azure AI Foundry
+    Foundry->>Foundry: Provision agent + model + tools
+    Admin->>Server: Deploy Express server (Container Apps)
 
     Note over User,Agent: Runtime Phase
-    User->>Copilot: "@BrowserAgent pull MSFT annual report data"
-    Copilot->>Copilot: Route to declarative agent
-    Copilot->>Agent: Execute with instructions + capabilities
+    User->>Frontend: "Pull MSFT annual report data"
+    Frontend->>Server: POST /api/agui/stream {prompt}
+    Server->>Agent: Create thread + run with tools
     Agent->>Agent: Plan multi-step workflow
-    Agent->>Agent: Execute tools (navigate → extract → respond)
-    Agent-->>Copilot: Structured response
-    Copilot-->>User: Formatted answer with data table
+    Agent->>Server: Function call: navigate_page
+    Server-->>Frontend: SSE: TOOL_CALL_START
+    Server->>Server: Execute skill via ToolRouter
+    Server-->>Frontend: SSE: TOOL_CALL_END + STATE_SNAPSHOT
+    Agent->>Server: Function call: extract_content
+    Server-->>Frontend: SSE: TOOL_CALL_START → TOOL_CALL_END
+    Agent-->>Server: Final response text
+    Server-->>Frontend: SSE: TEXT_MESSAGE_CONTENT → RUN_FINISHED
+    Frontend-->>User: Formatted answer with real-time progress
 
-    Note over Admin,Store: Monitoring Phase
-    Agent->>Store: Audit logs (every action logged)
-    Admin->>Store: Review usage & compliance reports
+    Note over Admin,Foundry: Monitoring Phase
+    Server->>Foundry: Audit logs (every action logged)
+    Admin->>Foundry: Review usage & compliance reports
 ```
 
 ---
 
 ## Related Files
 
-- **[README.md](./README.md)** — Executive summary, "Operation Skyfall" demo, Azure integration, ROI metrics, Copilot SDK feedback, customer validation
+- **[README.md](./README.md)** — Executive summary, Azure integration, ROI metrics, customer validation
 - **[ARCHITECTURE.md](./ARCHITECTURE.md)** — Full system architecture diagram with all layers, Azure infrastructure, Responsible AI, observability
 - **[skills.md](./skills.md)** — Detailed skill definitions, API plugin spec, Microsoft Graph skills, Azure AI Content Safety integration
 
@@ -312,27 +311,31 @@ All agent-to-application authentication uses **Azure Entra ID** with delegated t
 ```mermaid
 sequenceDiagram
     participant User as Employee
-    participant Copilot as M365 Copilot
+    participant Frontend as CopilotKit UI
+    participant Server as Agent Server
     participant Entra as Azure Entra ID
-    participant Agent as Browser Agent
+    participant Agent as Foundry Agent
     participant KV as Azure Key Vault
     participant App as Target App (ServiceNow)
 
-    User->>Copilot: "@BrowserAgent close ticket INC0042"
-    Copilot->>Entra: Validate user identity (SSO)
+    User->>Frontend: "Close ticket INC0042"
+    Frontend->>Server: POST /api/agui/stream
+    Server->>Entra: Validate user identity (SSO)
     Entra->>Entra: Check Conditional Access policies
-    Entra-->>Copilot: ✅ User authenticated (token issued)
+    Entra-->>Server: ✅ User authenticated (token issued)
 
-    Copilot->>Agent: Execute with user context
-    Agent->>KV: Retrieve app-specific credentials
-    KV-->>Agent: ServiceNow OAuth token (scoped: read+write)
+    Server->>Agent: Create run with user context
+    Agent->>Server: Function call: submit_action
+    Server->>KV: Retrieve app-specific credentials
+    KV-->>Server: ServiceNow OAuth token (scoped: read+write)
 
-    Agent->>Entra: Request delegated token for ServiceNow
+    Server->>Entra: Request delegated token for ServiceNow
     Entra->>Entra: Validate RBAC (user has ITSM role)
-    Entra-->>Agent: Delegated token (scoped to user permissions)
+    Entra-->>Server: Delegated token (scoped to user permissions)
 
-    Agent->>App: API call with delegated token
-    App-->>Agent: Response (user's permission level)
+    Server->>App: API call with delegated token
+    App-->>Server: Response (user's permission level)
+    Server-->>Frontend: SSE: TOOL_CALL_END + result
 ```
 
 ### Token Scoping by Skill
@@ -348,40 +351,53 @@ sequenceDiagram
 
 ---
 
-## Microsoft Foundry Integration
+## Azure AI Foundry Integration
 
-The browser agent registers with **Microsoft Foundry** for enterprise-scale agent management:
+The browser agent is deployed and managed via **Azure AI Foundry** for enterprise-scale agent management:
 
 ```mermaid
 flowchart TB
-    subgraph Foundry["Microsoft Foundry Control Plane"]
-        Registry["Agent Registry"]
+    subgraph Foundry["Azure AI Foundry"]
+        Project["AI Project"]
+        AgentService["Agent Service\n(GPT-4o + Tools)"]
         Governance["Governance\n(Policies + Compliance)"]
         Analytics["Agent Analytics\n(Usage + Performance)"]
     end
 
-    subgraph Agents["Registered Agents"]
-        Browser["🌐 Browser Agent\nv1.2.0"]
-        Data["📊 Fabric Data Agent"]
-        Email["📧 Outlook Agent"]
-        Calendar["📅 Calendar Agent"]
+    subgraph AgentStack["Agent Stack"]
+        Browser["🌐 Browser Agent\nv1.0.0"]
+        AGUI["📡 AG-UI Streaming\n(SSE Events)"]
+        Skills["🔧 12 Function Tools"]
     end
 
-    Registry --> Browser
-    Registry --> Data
-    Registry --> Email
-    Registry --> Calendar
+    subgraph Infra["Azure Infrastructure"]
+        ContainerApps["Azure Container Apps"]
+        CosmosDB["Cosmos DB\n(Audit + State)"]
+        KeyVault["Azure Key Vault"]
+        ContentSafety["AI Content Safety"]
+        AppInsights["Application Insights"]
+    end
+
+    Project --> AgentService
+    AgentService --> Browser
+    Browser --> AGUI
+    Browser --> Skills
     Governance -->|"URL allowlists\nApproval policies"| Browser
-    Browser <-->|"Handoff"| Data
-    Browser <-->|"Handoff"| Email
-    Browser <-->|"Handoff"| Calendar
     Browser --> Analytics
 
-    classDef foundry fill:#F3E5F5,stroke:#7B1FA2
-    classDef agent fill:#E8F5E9,stroke:#2E7D32
+    Browser --> ContainerApps
+    Browser --> CosmosDB
+    Browser --> KeyVault
+    Browser --> ContentSafety
+    Browser --> AppInsights
 
-    class Registry,Governance,Analytics foundry
-    class Browser,Data,Email,Calendar agent
+    classDef foundry fill:#E8EAF6,stroke:#283593
+    classDef agent fill:#E8F5E9,stroke:#2E7D32
+    classDef infra fill:#FFF3E0,stroke:#E65100
+
+    class Project,AgentService,Governance,Analytics foundry
+    class Browser,AGUI,Skills agent
+    class ContainerApps,CosmosDB,KeyVault,ContentSafety,AppInsights infra
 ```
 
 ### Cross-Agent Handoff Scenarios
@@ -395,7 +411,7 @@ flowchart TB
 
 ---
 
-## Microsoft Fabric Analytics & Work IQ
+## Microsoft Fabric Analytics
 
 Agent activity data streams into **Microsoft Fabric** via Cosmos DB change feed:
 
@@ -403,12 +419,3 @@ Agent activity data streams into **Microsoft Fabric** via Cosmos DB change feed:
 - **Workflow Intelligence** — ML models identify bottleneck steps and recommend faster paths (e.g., "ServiceNow API is 3x faster than DOM for ticket updates")
 - **Cost Optimization** — Track Azure OpenAI token consumption, Container Apps compute costs, and per-workflow ROI
 - **Compliance Reporting** — Auto-generated audit reports with tamper-proof provenance from Cosmos DB
-
-### Work IQ Integration
-
-The agent feeds productivity signals into **Work IQ** via Microsoft Graph and Viva Insights:
-
-- **Personal Insights** — Each user sees their time saved, focus hours recovered, and workflows automated in Viva Insights
-- **Manager Analytics** — Team leads see aggregate productivity impact and can identify high-ROI workflows to expand
-- **Org-Level ROI** — Executive dashboards show enterprise-wide savings with department-by-department breakdown
-- **Proactive Recommendations** — Work IQ surfaces suggestions like: "The Engineering team manually updates 47 Jira tickets/week from ServiceNow data — this workflow is automatable with projected savings of 12 hrs/week"

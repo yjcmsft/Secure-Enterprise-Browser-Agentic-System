@@ -51,7 +51,7 @@ All notable changes to this project are documented in this file.
 ### CI/CD — Real Deployment Pipelines
 - Replaced placeholder `echo` steps in `.github/workflows/deploy.yml` with real `azd up` deployment:
   - **deploy-staging**: Azure login (OIDC), `azd` install, provision & deploy with staging env, post-deploy health-check smoke test.
-  - **deploy-prod**: Same flow with `environment: production` gate, plus M365 app package ZIP build.
+  - **deploy-prod**: Same flow with `environment: production` gate, plus agent config package ZIP build.
   - Added `id-token: write` permissions for OIDC auth.
   - Added `npm run lint` and `npm run typecheck` to test job.
 - Added `microsoft/security-devops-action@v1` security scan and `security-events: write` permission to `.github/workflows/test.yml`.

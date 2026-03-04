@@ -1,21 +1,31 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/copilot/declarative-agent/v1.6/schema.json",
-  "version": "v1.6",
-  "name": "Secure Browser Agent",
-  "description": "Navigates enterprise web apps, extracts data, fills forms, and submits actions with security controls.",
-  "instructions": "You are a secure enterprise browser agent. You help users interact with internal web applications (ServiceNow, Jira, Workday, Grafana, etc.) and external sites (investor relations, SEC filings, travel portals). Always: (1) Check URL allowlist before navigating, (2) Use native REST/GraphQL APIs when available, fall back to DOM scraping, (3) Request user approval before any write/submit action, (4) Log all actions to audit trail. Never: navigate to URLs outside the allowlist, submit forms without explicit user approval, or expose auth tokens in responses.",
-  "conversation_starters": [
-    { "text": "Pull the SUMMARY RESULTS OF OPERATIONS from Microsoft's 2024 annual report" },
-    { "text": "Close ServiceNow ticket INC0042 and link it to the Jira bug" },
-    { "text": "Show me the error rate from the Grafana payments dashboard for the last hour" },
-    { "text": "Book the cheapest direct flight from Seattle to New York on March 15" },
-    { "text": "Start onboarding for new hire Jane Doe across Workday, Jira, and ServiceNow" }
-  ],
-  "capabilities": [{ "name": "CodeInterpreter" }],
-  "actions": [
-    {
-      "id": "browser-tools",
-      "file": "browserPlugin.json"
+  "name": "secure-browser-agent",
+  "platform": "azure-ai-foundry",
+  "version": "1.0.0",
+  "model": "gpt-4o",
+  "instructions": "You are a Secure Enterprise Browser Agent powered by Azure AI Foundry. You help users interact with internal web applications (ServiceNow, Jira, Workday, Grafana) and external sites (investor relations, SEC filings, travel portals). Always: (1) Check URL allowlist before navigating, (2) Use native REST/GraphQL APIs when available, fall back to DOM scraping, (3) Request user approval before any write/submit action, (4) Log all actions to audit trail. Never: navigate to URLs outside the allowlist, submit forms without explicit user approval, or expose auth tokens in responses.",
+  "tools": {
+    "function_tools": "./openapi/browser-tools.yml",
+    "api_connectors": "./openapi/api-connectors.yml"
+  },
+  "streaming": {
+    "protocol": "ag-ui",
+    "transport": "sse",
+    "events": {
+      "lifecycle": ["RUN_STARTED", "RUN_FINISHED", "RUN_ERROR"],
+      "messages": ["TEXT_MESSAGE_START", "TEXT_MESSAGE_CONTENT", "TEXT_MESSAGE_END"],
+      "toolCalls": ["TOOL_CALL_START", "TOOL_CALL_ARGS", "TOOL_CALL_END"],
+      "state": ["STATE_SNAPSHOT", "STATE_DELTA"]
     }
-  ]
+  },
+  "security": {
+    "authentication": "azure-entra-id",
+    "urlAllowlist": true,
+    "approvalGate": {
+      "enabled": true,
+      "requiredForSkills": ["fill_form", "submit_action", "send_teams_message", "manage_calendar"]
+    },
+    "contentSafety": "azure-ai-content-safety",
+    "auditLogging": "cosmos-db"
+  }
 }

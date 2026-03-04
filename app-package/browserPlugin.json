@@ -1,26 +1,74 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/copilot/plugin/v2.2/schema.json",
-  "schema_version": "v2.2",
-  "name_for_human": "Browser Tools",
-  "name_for_model": "browser_tools",
-  "description_for_human": "Secure browser and API automation tools",
-  "description_for_model": "Use these tools to navigate, extract, fill, submit, discover APIs, and run M365 collaboration actions.",
+  "name": "browser-tools",
+  "description": "Secure browser and API automation tools for Azure AI Foundry Agent Service",
   "api": {
     "type": "openapi",
     "url": "./openapi/browser-tools.yml"
   },
   "functions": [
-    { "name": "navigate_page" },
-    { "name": "extract_content" },
-    { "name": "fill_form" },
-    { "name": "submit_action" },
-    { "name": "discover_apis" },
-    { "name": "capture_screenshot" },
-    { "name": "compare_data" },
-    { "name": "orchestrate_workflow" },
-    { "name": "send_teams_message" },
-    { "name": "create_adaptive_card" },
-    { "name": "manage_calendar" },
-    { "name": "analyze_work_patterns" }
+    {
+      "name": "navigate_page",
+      "description": "Navigate to a URL in the enterprise browser",
+      "parameters": { "url": "string", "waitFor": "string?", "clickText": "string?" }
+    },
+    {
+      "name": "extract_content",
+      "description": "Extract structured content from the current browser page",
+      "parameters": { "url": "string?", "mode": "all|text|table|links|form_values" }
+    },
+    {
+      "name": "fill_form",
+      "description": "Fill form fields on the current browser page (requires approval)",
+      "parameters": { "url": "string?", "fields": "object" },
+      "requiresApproval": true
+    },
+    {
+      "name": "submit_action",
+      "description": "Submit a form or trigger an action (requires approval)",
+      "parameters": { "url": "string?", "selector": "string?", "payload": "object?" },
+      "requiresApproval": true
+    },
+    {
+      "name": "discover_apis",
+      "description": "Discover REST/GraphQL API endpoints for a target application",
+      "parameters": { "baseUrl": "string" }
+    },
+    {
+      "name": "capture_screenshot",
+      "description": "Capture a screenshot of the current browser page or element",
+      "parameters": { "selector": "string?" }
+    },
+    {
+      "name": "compare_data",
+      "description": "Compare data from multiple URLs",
+      "parameters": { "urls": "string[]", "mode": "all|text|table|links" }
+    },
+    {
+      "name": "orchestrate_workflow",
+      "description": "Execute a multi-step workflow across multiple skills",
+      "parameters": { "steps": "array" }
+    },
+    {
+      "name": "send_teams_message",
+      "description": "Send a message to a Teams chat or channel via Microsoft Graph",
+      "parameters": { "chatId": "string?", "teamId": "string?", "channelId": "string?", "message": "string" },
+      "requiresApproval": true
+    },
+    {
+      "name": "create_adaptive_card",
+      "description": "Create and send an Adaptive Card to Teams",
+      "parameters": { "chatId": "string?", "teamId": "string?", "channelId": "string?", "card": "object" }
+    },
+    {
+      "name": "manage_calendar",
+      "description": "Create or modify Outlook calendar events via Microsoft Graph",
+      "parameters": { "action": "create|update|findTimes", "event": "object?" },
+      "requiresApproval": true
+    },
+    {
+      "name": "analyze_work_patterns",
+      "description": "Analyze work patterns and productivity insights",
+      "parameters": { "data": "object?" }
+    }
   ]
 }

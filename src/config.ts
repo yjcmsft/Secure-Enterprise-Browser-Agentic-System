@@ -3,6 +3,7 @@ import { z } from "zod";
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().default(3000),
+  AZURE_AI_PROJECT_ENDPOINT: z.string().optional(),
   AZURE_OPENAI_ENDPOINT: z.string().optional(),
   AZURE_OPENAI_MODEL: z.string().default("gpt-4o"),
   CONTENT_SAFETY_ENDPOINT: z.string().optional(),
@@ -22,6 +23,7 @@ const envSchema = z.object({
   GRAPH_BASE_URL: z.string().default("https://graph.microsoft.com/v1.0"),
   TARGET_APP_SCOPE: z.string().default("api://browser-agent/.default"),
   GRAPH_DEFAULT_SCOPE: z.string().default("https://graph.microsoft.com/.default"),
+  AGUI_ENABLED: z.enum(["true", "false"]).default("true"),
 });
 
 export type AppConfig = z.infer<typeof envSchema> & {

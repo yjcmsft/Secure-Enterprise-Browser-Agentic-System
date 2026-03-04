@@ -2,7 +2,9 @@ import express from "express";
 import rateLimit from "express-rate-limit";
 import { randomUUID } from "node:crypto";
 import { createLogger, format, transports } from "winston";
+import { handleAgUiStream, getSessionState } from "./agui-handler.js";
 import { config } from "./config.js";
+import { startFoundryAgent, stopFoundryAgent } from "./foundry-agent.js";
 import { TaskPlanner } from "./orchestrator/task-planner.js";
 import { ToolRouter } from "./orchestrator/tool-router.js";
 import { runtime, sessionManager } from "./runtime.js";
@@ -153,11 +155,42 @@ app.post("/api/workflow", async (req, res) => {
   res.status(result.success ? 200 : 400).json({ requestId, plan, result });
 });
 
+// ---------------------------------------------------------------------------
+// AG-UI SSE streaming endpoint — CopilotKit / AG-UI compatible frontends
+// ---------------------------------------------------------------------------
+app.post("/api/agui/stream", (req, res) => {
+  void handleAgUiStream(req, res);
+});
+
+app.get("/api/agui/state/:sessionId", (req, res) => {
+  const requestId = resolveRequestId(req, res);
+  const state = getSessionState(req.params.sessionId);
+  res.status(200).json({ requestId, state: state ?? {} });
+});
+
+// ---------------------------------------------------------------------------
+// Agent lifecycle — start Azure AI Foundry agent if configured
+// ---------------------------------------------------------------------------
+async function startAgent(): Promise<void> {
+  if (config.AZURE_AI_PROJECT_ENDPOINT) {
+    try {
+      await startFoundryAgent();
+      logger.info("Azure AI Foundry agent started successfully");
+    } catch (err) {
+      logger.warn("Foundry agent start skipped (will use REST API only)", {
+        error: (err as Error).message,
+      });
+    }
+  }
+}
+
 const server = app.listen(config.PORT, () => {
   logger.info(`Server listening on port ${config.PORT}`);
+  void startAgent();
 });
 
 async function shutdown(): Promise<void> {
+  await stopFoundryAgent();
   await sessionManager.closeAll();
   await runtime.browserPool.close();
   server.close(() => process.exit(0));

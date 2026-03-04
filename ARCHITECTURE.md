@@ -6,7 +6,7 @@
 flowchart TB
     subgraph UserLayer["👤 User Layer"]
         Employee["Employee"]
-        CopilotChat["Copilot Chat / CLI Interface\n(Teams / Outlook / Web)"]
+        CopilotChat["CopilotKit UI / CLI Interface\n(AG-UI SSE Stream)"]
     end
 
     subgraph AzureInfra["☁️ Azure Cloud Infrastructure"]
@@ -20,7 +20,7 @@ flowchart TB
         ContentSafety["Azure AI Content Safety\n(PII + Jailbreak Defense)"]
     end
 
-    subgraph AgentOrchestrator["🤖 Agent Orchestrator (Copilot SDK)"]
+    subgraph AgentOrchestrator["🤖 Agent Orchestrator (Azure AI Foundry)"]
         Planner["Task Planner\n(Multi-step Workflow Engine)"]
         Memory["Context & Memory Store"]
         Router["Tool Router"]
@@ -165,9 +165,9 @@ flowchart TB
 
 | Layer | Purpose |
 |---|---|
-| **User Layer** | Employee interacts via natural language through Copilot Chat (Teams / Outlook / Web) |
+| **User Layer** | Employee interacts via natural language through CopilotKit UI (AG-UI streaming) or direct REST API |
 | **Azure Cloud Infrastructure** | Azure OpenAI (GPT-4o), Entra ID (SSO + RBAC), Container Apps (runtime), Key Vault (secrets), Cosmos DB (audit), Monitor + App Insights (observability), AI Content Safety (RAI) |
-| **Agent Orchestrator** | Copilot SDK plans multi-step workflows, tracks context, and routes tool calls |
+| **Agent Orchestrator** | Azure AI Foundry Agent Service plans multi-step workflows, tracks context, and routes tool calls via function calling |
 | **Security Boundary** | Azure Entra ID auth delegation, URL allowlisting, human-in-the-loop approval gates, Azure AI Content Safety screening, and Cosmos DB audit logging |
 | **Agent Skills** | Core skills — `navigate_page`, `extract_content`, `fill_form`, `submit_action`, plus Microsoft Graph skills for Teams/Outlook |
 | **Native API Integration** | Direct REST/GraphQL integration with target applications — the agent discovers and calls native APIs (OpenAPI/Swagger) exposed by enterprise apps, enabling faster and more reliable workflows than DOM manipulation |
@@ -246,7 +246,7 @@ sequenceDiagram
 ```mermaid
 sequenceDiagram
     participant U as Analyst
-    participant A as Agent (Copilot SDK)
+    participant A as Agent (Azure AI Foundry)
     participant S as Security Layer
     participant B as Browser (J-browser-agents)
     participant IR as microsoft.com/investor
@@ -504,8 +504,8 @@ sequenceDiagram
 
 ## Related Files
 
-- **[README.md](./README.md)** — Executive summary, "Operation Skyfall" demo scenario, Azure integration overview, ROI metrics, Copilot SDK feedback, customer validation
-- **[agents.md](./agents.md)** — Agent types, M365 Copilot app packaging, declarative agent manifest, Foundry integration, and API integration strategy
+- **[README.md](./README.md)** — Executive summary, "Operation Skyfall" demo scenario, Azure integration overview, ROI metrics, Azure AI Agent SDK feedback, customer validation
+- **[agents.md](./agents.md)** — Agent types, Azure AI Foundry integration, AG-UI streaming, Foundry governance, and API integration strategy
 - **[skills.md](./skills.md)** — Detailed skill definitions (`navigate_page`, `extract_content`, `fill_form`, `submit_action`, `discover_apis`, `compare_data`, Microsoft Graph skills), API plugin spec, Azure AI Content Safety integration, and security classifications
 
 ---
@@ -570,7 +570,7 @@ flowchart LR
 ```
 
 **Application Insights** provides:
-- **Distributed tracing** — End-to-end trace from user prompt → Copilot SDK → security gate → browser/API → target app → response
+- **Distributed tracing** — End-to-end trace from user prompt → Azure AI Foundry agent → security gate → browser/API → target app → response
 - **Custom metrics** — Skill invocation counts, API vs. DOM path ratio, approval rates, response times
 - **Live metrics** — Real-time dashboard showing active sessions, error rate, and throughput
 - **Failure analysis** — Automatic detection of skill failures with root cause analysis

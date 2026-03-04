@@ -2,10 +2,11 @@
 
 > **One prompt. Seven apps. Three minutes. Board-ready.**
 
-A **Microsoft 365 Copilot declarative agent** that securely navigates, reads, and acts across enterprise web applications — powered by **Azure OpenAI**, protected by **Azure AI Content Safety**, observed through **Azure Monitor**, and deployed with **Azure Container Apps + Bicep IaC**.
+An **Azure AI Foundry Agent** (pro-code, Microsoft Agent Framework) that securely navigates, reads, and acts across enterprise web applications — powered by **Azure OpenAI**, streamed via the **AG-UI protocol** (CopilotKit-compatible), protected by **Azure AI Content Safety**, observed through **Azure Monitor**, and deployed with **Azure Container Apps + Bicep IaC**.
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com)
-[![Built with Copilot SDK](https://img.shields.io/badge/Built%20with-Copilot%20SDK-blue)](https://learn.microsoft.com/copilot/agents)
+[![Built with Azure AI Foundry](https://img.shields.io/badge/Built%20with-Azure%20AI%20Foundry-blue)](https://azure.microsoft.com/products/ai-foundry)
+[![AG-UI Protocol](https://img.shields.io/badge/Streaming-AG--UI%20Protocol-purple)](https://docs.ag-ui.com)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 [![Latest Changes](https://img.shields.io/badge/Latest%20Changes-Changelog-orange)](./CHANGELOG.md)
 
@@ -31,7 +32,8 @@ A **Microsoft 365 Copilot declarative agent** that securely navigates, reads, an
 - **Zero Trust by Default** — Azure Entra ID → URL allowlist → human approval gate → immutable audit log.
 - **Responsible AI Built-In** — Azure AI Content Safety screens all inputs/outputs. Prompt injection defense. PII auto-redaction.
 - **Enterprise Observability** — Application Insights distributed tracing, Azure Monitor dashboards, Cosmos DB audit trail.
-- **M365 Native** — Appears in Teams, Outlook, and Copilot Chat with zero adoption friction.
+- **AG-UI Streaming** — Real-time SSE streaming via AG-UI protocol. Live tool call progress, shared state, and CopilotKit-ready frontend integration.
+- **Azure AI Foundry Native** — Pro-code agent built with Microsoft Agent Framework (`@azure/ai-projects`). Function tools, thread management, Foundry governance.
 - **One-Command Deployment** — Bicep IaC + GitHub Actions CI/CD. Under 10 minutes to production.
 - **White-Label Reusable** — Skill templates + ISV partner model. Build once, deploy across industries.
 
@@ -60,12 +62,13 @@ az deployment group create \
 # 5. Deploy the agent runtime
 az containerapp up --name browser-agent --source .
 
-# 6. Package and publish the M365 app
-cd app-package && zip -r ../app-package.zip .
-# Upload app-package.zip via M365 Admin Center
+# 6. Start the server (AG-UI streaming endpoint ready)
+npm start
+# POST /api/agui/stream for CopilotKit integration
+# POST /api/skills/:skillName for direct REST calls
 
-# 7. Test in Copilot Chat
-# @BrowserAgent pull the revenue from Microsoft's 2024 annual report
+# 7. Connect CopilotKit frontend
+# Point useAgent({ endpoint: "http://localhost:3000/api/agui/stream" })
 ```
 
 ### Available Scripts
@@ -115,13 +118,13 @@ The agent decomposes this into 12 sub-tasks, executes 3 workstreams in parallel,
 
 ```mermaid
 flowchart TB
-    subgraph M365["Microsoft 365 Platform"]
-        CopilotSDK["Copilot SDK\n(Orchestrator)"]
-        Teams["Teams / Outlook"]
-        Graph["Microsoft Graph API"]
+    subgraph Frontend["🖥️ Frontend (AG-UI / CopilotKit)"]
+        CopilotKitUI["CopilotKit React UI\n(useAgent hook)"]
+        AGUI["AG-UI Protocol\n(SSE Event Stream)"]
     end
 
-    subgraph Azure["Azure Cloud Services"]
+    subgraph Azure["☁️ Azure Cloud Services"]
+        Foundry["Azure AI Foundry\nAgent Service"]
         AOAI["Azure OpenAI Service\n(GPT-4o)"]
         EntraID["Azure Entra ID\n(SSO + RBAC)"]
         ContainerApps["Azure Container Apps\n(Agent Runtime)"]
@@ -131,8 +134,15 @@ flowchart TB
         ContentSafety["Azure AI Content Safety"]
     end
 
-    CopilotSDK --> AOAI
-    CopilotSDK --> ContainerApps
+    subgraph Integration["📡 Microsoft Integration"]
+        Graph["Microsoft Graph API"]
+        Teams["Teams / Outlook"]
+    end
+
+    CopilotKitUI -->|"POST /api/agui/stream"| AGUI
+    AGUI --> ContainerApps
+    ContainerApps --> Foundry
+    Foundry --> AOAI
     ContainerApps --> EntraID
     ContainerApps --> KeyVault
     ContainerApps --> CosmosDB
@@ -141,15 +151,18 @@ flowchart TB
     ContainerApps --> Graph
     Graph --> Teams
 
-    classDef m365 fill:#E3F2FD,stroke:#1565C0,color:#0D47A1
+    classDef frontend fill:#E3F2FD,stroke:#1565C0,color:#0D47A1
     classDef azure fill:#E8EAF6,stroke:#283593,color:#1A237E
+    classDef integration fill:#E8F5E9,stroke:#2E7D32,color:#1B5E20
 
-    class CopilotSDK,Teams,Graph m365
-    class AOAI,EntraID,ContainerApps,KeyVault,CosmosDB,AppInsights,ContentSafety azure
+    class CopilotKitUI,AGUI frontend
+    class Foundry,AOAI,EntraID,ContainerApps,KeyVault,CosmosDB,AppInsights,ContentSafety azure
+    class Graph,Teams integration
 ```
 
 | Azure Service | Role |
 |---|---|
+| **Azure AI Foundry** | Agent Service — manages agent lifecycle, tools, threads, and runs |
 | **Azure OpenAI Service** | GPT-4o for task planning, intent recognition, response generation |
 | **Azure Entra ID** | SSO, token delegation, RBAC, Conditional Access |
 | **Azure Container Apps** | Agent runtime with auto-scaling |
@@ -204,6 +217,8 @@ The resolved ID is returned in both the `x-request-id` response header and the `
 | `POST /api/skills/:skillName` | ✅ |
 | `POST /api/workflow` | ✅ |
 | `POST /api/approve/:actionId` | ✅ |
+| `POST /api/agui/stream` | ✅ (via SSE `runId`) |
+| `GET /api/agui/state/:sessionId` | ✅ |
 
 **Example:**
 
@@ -237,7 +252,7 @@ Error codes: `URL_NOT_ALLOWED`, `INPUT_BLOCKED`, `APPROVAL_DENIED`, `OUTPUT_BLOC
 ```
 ├── README.md                      # This file
 ├── ARCHITECTURE.md                # Full system architecture with diagrams
-├── agents.md                      # Agent types, M365 packaging, lifecycle
+├── agents.md                      # Agent types, Azure AI Foundry, AG-UI streaming, lifecycle
 ├── skills.md                      # Skill definitions, API plugin spec
 ├── CHANGELOG.md                   # Version history
 ├── LICENSE                        # MIT License
@@ -247,10 +262,10 @@ Error codes: `URL_NOT_ALLOWED`, `INPUT_BLOCKED`, `APPROVAL_DENIED`, `OUTPUT_BLOC
 ├── eslint.config.js               # Linter config
 ├── Dockerfile                     # Container image
 ├── azure.yaml                     # Azure Developer CLI config
-├── app-package/                   # M365 Copilot app package
-│   ├── manifest.json              # M365 App Manifest (v1.18+)
-│   ├── declarativeAgent.json      # Agent instructions & capabilities
-│   └── browserPlugin.json         # API plugin manifest
+├── app-package/                   # Azure AI Foundry agent config
+│   ├── manifest.json              # Agent manifest
+│   ├── declarativeAgent.json      # Agent config (model, streaming, security)
+│   └── browserPlugin.json         # Function tool definitions
 ├── infra/                         # Bicep IaC templates
 │   ├── main.bicep                 # Root deployment template
 │   ├── modules/                   # Azure resource modules
@@ -274,10 +289,34 @@ Error codes: `URL_NOT_ALLOWED`, `INPUT_BLOCKED`, `APPROVAL_DENIED`, `OUTPUT_BLOC
 | Document | Description |
 |---|---|
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | Full system architecture, Azure integration, security flows, Foundry/Fabric/Work IQ, detailed examples |
-| [agents.md](./agents.md) | Agent types, M365 app packaging, declarative agent manifest, lifecycle |
+| [agents.md](./agents.md) | Agent types, Azure AI Foundry integration, AG-UI streaming, declarative config, lifecycle |
 | [skills.md](./skills.md) | 8 skill definitions, API plugin spec, security classification, Graph API skills |
 | [CHANGELOG.md](./CHANGELOG.md) | Version history, security and reliability improvements |
 | [IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md) | Implementation roadmap and plan |
+
+---
+
+## 💬 Azure AI Agent Service SDK & AG-UI Protocol — Product Feedback
+
+Building this agent with the Azure AI Foundry Agent Service SDK (`@azure/ai-projects`) and the AG-UI protocol surfaced several insights:
+
+### What works exceptionally well
+
+- **Function tool definitions** — Defining skills as `FunctionToolDefinition[]` with JSON Schema parameters is clean and type-safe. The SDK's `createAgent` + `createRun` + tool output loop is straightforward.
+- **Thread-based state** — Persistent threads with automatic message history eliminate manual context management. Thread isolation per user/session is enterprise-ready out of the box.
+- **AG-UI event model** — The 17 event types (`RUN_STARTED`, `TOOL_CALL_START`, `STATE_SNAPSHOT`, etc.) map perfectly to agentic UIs. `@ag-ui/encoder` handles SSE serialization seamlessly.
+- **CopilotKit interop** — AG-UI makes it trivial to swap frontends. The `useAgent` hook in CopilotKit consumes our SSE stream without any adapter code.
+
+### Opportunities for improvement
+
+- **Streaming runs** — The SDK currently requires polling `getRun()` in a loop for run status. A native SSE/streaming response from `createRun()` (similar to OpenAI's streaming API) would eliminate polling latency and simplify the AG-UI bridge.
+- **Tool call batching** — When the agent calls multiple tools in parallel, each requires a separate `submitToolOutputs` call. A batch submission API would reduce round-trips.
+- **AG-UI state delta** — `STATE_SNAPSHOT` sends full state on every update. For large agent states, `STATE_DELTA` (JSON Patch) would reduce payload size significantly. The protocol defines it but tooling support is limited.
+- **TypeScript types** — `@azure/ai-projects` beta types occasionally require `as unknown as X` casts for complex tool output scenarios. Stronger generics for tool result types would improve DX.
+
+### Integration recommendation
+
+The **Azure AI Foundry Agent Service + AG-UI + CopilotKit** stack is the most ergonomic path we found for building enterprise agents with real-time UIs. The Foundry service handles orchestration and governance, AG-UI standardizes the streaming protocol, and CopilotKit provides drop-in React components — each layer is cleanly separated and independently replaceable.
 
 ---
 

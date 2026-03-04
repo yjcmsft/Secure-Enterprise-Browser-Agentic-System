@@ -10,7 +10,7 @@ Skills are the capabilities that the Browser Agent exposes to the Microsoft 365 
 
 ```mermaid
 flowchart TB
-    subgraph CopilotOrchestrator["🤖 M365 Copilot Orchestrator"]
+    subgraph CopilotOrchestrator["🤖 Azure AI Foundry Agent"]
         Intent["Intent Recognition"]
         SkillSelect["Skill Selection"]
     end
@@ -436,7 +436,7 @@ flowchart LR
 
 ## API Plugin Specification
 
-Skills are exposed to the M365 Copilot orchestrator as an API plugin. The OpenAPI specification defines the REST endpoints that the Copilot SDK calls when invoking each skill.
+Skills are exposed to the Azure AI Foundry Agent Service as function tools. The OpenAPI specification defines the REST endpoints, and the `@azure/ai-projects` SDK registers each skill as a `FunctionToolDefinition` that the agent calls during runs.
 
 ### browserPlugin.json (Simplified)
 
@@ -550,7 +550,7 @@ Skills are exposed to the M365 Copilot orchestrator as an API plugin. The OpenAP
 
 ## Related Files
 
-- **[README.md](./README.md)** — Executive summary, "Operation Skyfall" demo, Azure integration, ROI metrics, Copilot SDK feedback, customer validation
+- **[README.md](./README.md)** — Executive summary, "Operation Skyfall" demo, Azure integration, ROI metrics, Azure AI Agent SDK feedback, customer validation
 - **[ARCHITECTURE.md](./ARCHITECTURE.md)** — Full system architecture diagram with all layers, Azure infrastructure, Responsible AI, observability
 - **[agents.md](./agents.md)** — Agent types, M365 app packaging, Azure Entra ID auth flow, Foundry integration
 

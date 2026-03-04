@@ -2,13 +2,13 @@
 
 ## Problem Statement
 
-The repository contains comprehensive design documentation (README.md, ARCHITECTURE.md, agents.md, skills.md) and an implemented TypeScript codebase for a Microsoft 365 Copilot declarative agent that automates browser-based enterprise workflows. This plan remains as the implementation reference across 12 phases.
+The repository contains comprehensive design documentation (README.md, ARCHITECTURE.md, agents.md, skills.md) and an implemented TypeScript codebase for an Azure AI Foundry Agent (pro-code, Microsoft Agent Framework) that automates browser-based enterprise workflows with AG-UI streaming. This plan remains as the implementation reference across 12 phases.
 
 ## Technology Choices
 
 | Layer | Technology | Rationale |
 |---|---|---|
-| Runtime | **TypeScript / Node.js** | Copilot SDK is TypeScript-native; README references `npm install && npm run build` |
+| Runtime | **TypeScript / Node.js** | Azure AI Projects SDK is TypeScript-native; AG-UI protocol has first-class TS support |
 | Browser Automation | **Playwright** (via J-browser-agents pattern) | Cross-browser headless automation, mature API, built-in selectors |
 | HTTP Client | **axios** | REST/GraphQL API calls |
 | Testing | **Vitest** | Fast, TypeScript-native, ESM-ready |
@@ -27,7 +27,7 @@ secure-browser-agent/
 ├── eslint.config.js
 ├── Dockerfile
 ├── .env.example
-├── app-package/                     # M365 Copilot app package
+├── app-package/                     # Azure AI Foundry agent config
 │   ├── manifest.json
 │   ├── declarativeAgent.json
 │   ├── browserPlugin.json
@@ -130,14 +130,14 @@ Set up the TypeScript/Node.js project scaffolding, tooling, and development envi
 
 ---
 
-### Phase 2: M365 App Package
+### Phase 2: Agent Package
 
-Create the declarative agent configuration files that register the agent with Microsoft 365 Copilot.
+Create the agent configuration files that register the agent with Azure AI Foundry.
 
 **Deliverables:**
-- `app-package/manifest.json` — M365 App Manifest v1.18+ with `copilotAgents.declarativeAgents` entry
-- `app-package/declarativeAgent.json` — Agent name, description, instructions (system prompt with security rules), conversation starters, capabilities (`CodeInterpreter`), and actions reference
-- `app-package/browserPlugin.json` — API plugin manifest (schema v2.2) with `functions` array defining all 12 skills: `navigate_page`, `extract_content`, `fill_form`, `submit_action`, `discover_apis`, `capture_screenshot`, `compare_data`, `orchestrate_workflow`, `send_teams_message`, `create_adaptive_card`, `manage_calendar`, `analyze_work_patterns`
+- `app-package/manifest.json` — Agent manifest for Azure AI Foundry with tool registry and streaming config
+- `app-package/declarativeAgent.json` — Agent config (model, instructions, streaming protocol, security settings)
+- `app-package/browserPlugin.json` — Function tool definitions for all 12 skills: `navigate_page`, `extract_content`, `fill_form`, `submit_action`, `discover_apis`, `capture_screenshot`, `compare_data`, `orchestrate_workflow`, `send_teams_message`, `create_adaptive_card`, `manage_calendar`, `analyze_work_patterns`
 - `app-package/openapi/browser-tools.yml` — Full OpenAPI 3.0 specification for the 8 core browser skills with parameter schemas, descriptions, and examples
 - `app-package/openapi/api-connectors.yml` — OpenAPI 3.0 specification for native API connector endpoints (schema discovery, REST proxy, GraphQL proxy)
 - Placeholder icon PNGs (`color.png` 192×192, `outline.png` 32×32)
@@ -212,7 +212,7 @@ Implement the 8 core skills that the agent exposes to the Copilot orchestrator. 
 
 ### Phase 7: Microsoft Graph Skills
 
-Implement the M365-native skills using Microsoft Graph API.
+Implement the Microsoft Graph-based skills for Teams, Outlook, and productivity insights.
 
 **Deliverables:**
 - `src/graph/send-teams-message.ts` — Send message or adaptive card to Teams channel/chat via `POST /teams/{id}/channels/{id}/messages`. Supports markdown content, @mentions, and adaptive card payloads. Requires `Chat.ReadWrite` scope. Approval required for external recipients.
@@ -239,7 +239,7 @@ Implement the central orchestration layer that plans and routes skill invocation
 
 ### Phase 9: HTTP Server & Entry Point
 
-Create the Express HTTP server that Azure Container Apps hosts and that receives requests from the Copilot SDK.
+Create the Express HTTP server that Azure Container Apps hosts and that receives requests from the Azure AI Foundry Agent Service and AG-UI streaming clients.
 
 **Deliverables:**
 - `src/index.ts` — Express HTTP server with:
@@ -285,7 +285,7 @@ Docker image and GitHub Actions pipelines for automated deployment.
 - `.github/workflows/deploy.yml` — CI/CD pipeline:
   - **test** job: checkout → security scan (`microsoft/security-devops-action@v1`) → `npm test` → Bicep validation (`az bicep build`).
   - **deploy-staging** job (needs test): deploy to Azure Container Apps with staging parameters.
-  - **deploy-prod** job (needs staging, environment: production): deploy with prod parameters → upload M365 app package.
+  - **deploy-prod** job (needs staging, environment: production): deploy with prod parameters → upload agent config package.
 - `.github/workflows/test.yml` — PR validation: lint (`npm run lint`), typecheck (`npm run typecheck`), unit tests (`npm test`), Bicep template validation.
 
 **Dependencies:** Phases 9, 10
@@ -329,8 +329,8 @@ Phase 1 (Foundation) ──┬──► Phase 2 (App Package)
 
 ## Notes & Considerations
 
-1. **TypeScript over Python** — Despite the Python .gitignore, all documentation code samples are TypeScript and the Copilot SDK is TypeScript-native. The .gitignore should be updated with Node.js patterns (`node_modules/`, `dist/`, `.env`).
-2. **Playwright over Puppeteer** — Playwright has better cross-browser support, built-in auto-wait, and is a Microsoft project (natural fit for this M365-integrated system).
+1. **TypeScript over Python** — Despite the Python .gitignore, all documentation code samples are TypeScript and the Azure AI Projects SDK is TypeScript-native. The .gitignore should be updated with Node.js patterns (`node_modules/`, `dist/`, `.env`).
+2. **Playwright over Puppeteer** — Playwright has better cross-browser support, built-in auto-wait, and is a Microsoft project (natural fit for this Azure-integrated system).
 3. **Environment variables** — All secrets via Azure Key Vault in production; `.env` for local development only. Never commit secrets.
 4. **Dual-path routing** — The API-first, DOM-fallback pattern is a core architectural differentiator. `dual-path-router.ts` is the most architecturally critical file.
 5. **Content Safety** — Every skill input/output must pass through Azure AI Content Safety. Non-negotiable per the architecture.

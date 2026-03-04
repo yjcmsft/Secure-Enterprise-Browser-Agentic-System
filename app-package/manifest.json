@@ -1,33 +1,53 @@
 {
-  "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.18/MicrosoftTeams.schema.json",
-  "manifestVersion": "1.18",
+  "name": "secure-browser-agent",
   "version": "1.0.0",
-  "id": "{{AGENT_APP_ID}}",
-  "developer": {
-    "name": "Enterprise Browser Agent",
-    "websiteUrl": "https://github.com/example/secure-browser-agent",
-    "privacyUrl": "https://example.com/privacy",
-    "termsOfUseUrl": "https://example.com/terms"
+  "platform": "azure-ai-foundry",
+  "description": "An Azure AI Foundry agent that securely navigates, reads, and acts across enterprise web applications with AG-UI streaming.",
+  "agent": {
+    "model": "gpt-4o",
+    "instructions": "You are a Secure Enterprise Browser Agent powered by Azure AI Foundry. You help users interact with internal web applications (ServiceNow, Jira, Workday, Grafana) and external sites (investor relations, SEC filings, travel portals). Always: (1) Check URL allowlist before navigating, (2) Use native REST/GraphQL APIs when available, fall back to DOM scraping, (3) Request user approval before any write/submit action, (4) Log all actions to audit trail. Never: navigate to URLs outside the allowlist, submit forms without explicit user approval, or expose auth tokens in responses.",
+    "tools": [
+      { "type": "function", "name": "navigate_page" },
+      { "type": "function", "name": "extract_content" },
+      { "type": "function", "name": "fill_form" },
+      { "type": "function", "name": "submit_action" },
+      { "type": "function", "name": "discover_apis" },
+      { "type": "function", "name": "capture_screenshot" },
+      { "type": "function", "name": "compare_data" },
+      { "type": "function", "name": "orchestrate_workflow" },
+      { "type": "function", "name": "send_teams_message" },
+      { "type": "function", "name": "create_adaptive_card" },
+      { "type": "function", "name": "manage_calendar" },
+      { "type": "function", "name": "analyze_work_patterns" }
+    ]
   },
-  "name": {
-    "short": "Browser Agent",
-    "full": "Secure Enterprise Browser Agent"
+  "streaming": {
+    "protocol": "ag-ui",
+    "endpoint": "/api/agui/stream",
+    "stateEndpoint": "/api/agui/state/:sessionId",
+    "events": [
+      "RUN_STARTED", "RUN_FINISHED", "RUN_ERROR",
+      "TEXT_MESSAGE_START", "TEXT_MESSAGE_CONTENT", "TEXT_MESSAGE_END",
+      "TOOL_CALL_START", "TOOL_CALL_ARGS", "TOOL_CALL_END",
+      "STATE_SNAPSHOT", "STATE_DELTA"
+    ]
   },
-  "description": {
-    "short": "Navigate, read, and act on web apps securely",
-    "full": "An AI agent that navigates internal and external web applications with enterprise controls."
+  "conversation_starters": [
+    "Pull the SUMMARY RESULTS OF OPERATIONS from Microsoft's 2024 annual report",
+    "Close ServiceNow ticket INC0042 and link it to the Jira bug",
+    "Show me the error rate from the Grafana payments dashboard for the last hour",
+    "Book the cheapest direct flight from Seattle to New York on March 15",
+    "Start onboarding for new hire Jane Doe across Workday, Jira, and ServiceNow"
+  ],
+  "security": {
+    "authentication": "azure-entra-id",
+    "urlAllowlist": true,
+    "approvalGate": true,
+    "contentSafety": "azure-ai-content-safety",
+    "auditLogging": "cosmos-db"
   },
   "icons": {
     "color": "color.png",
     "outline": "outline.png"
-  },
-  "accentColor": "#1565C0",
-  "copilotAgents": {
-    "declarativeAgents": [
-      {
-        "id": "browser-agent",
-        "file": "declarativeAgent.json"
-      }
-    ]
   }
 }

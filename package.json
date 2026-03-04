@@ -1,7 +1,7 @@
 {
   "name": "secure-enterprise-browser-agent",
   "version": "1.0.0",
-  "description": "A Microsoft 365 Copilot declarative agent that securely navigates, reads, and acts across enterprise web applications",
+  "description": "An Azure AI Foundry agent that securely navigates, reads, and acts across enterprise web applications with AG-UI streaming",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -27,8 +27,10 @@
     "deploy": "powershell -ExecutionPolicy Bypass -File ./scripts/deploy.ps1"
   },
   "keywords": [
-    "copilot",
-    "m365",
+    "azure-ai-foundry",
+    "agent-framework",
+    "ag-ui",
+    "copilotkit",
     "browser-automation",
     "enterprise",
     "azure"
@@ -38,11 +40,14 @@
     "node": ">=20.0.0"
   },
   "dependencies": {
+    "@ag-ui/core": "^0.1.2",
+    "@ag-ui/encoder": "^0.1.1",
+    "@azure/ai-projects": "^1.0.0-beta.10",
     "@azure-rest/ai-content-safety": "^1.0.0",
     "@azure/cosmos": "^4.2.0",
     "@azure/identity": "^4.5.0",
     "@azure/keyvault-secrets": "^4.9.0",
-    "@github/copilot-sdk": "^0.1.8",
+    "@copilotkit/runtime": "^1.50.0",
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "axios": "^1.7.9",
     "express": "^4.21.1",
