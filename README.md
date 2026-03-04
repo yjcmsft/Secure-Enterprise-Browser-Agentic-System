@@ -276,7 +276,10 @@ Error codes: `URL_NOT_ALLOWED`, `INPUT_BLOCKED`, `APPROVAL_DENIED`, `OUTPUT_BLOC
 │   ├── browser/                   # J-browser-agents integration
 │   ├── api/                       # Native API integration layer
 │   ├── graph/                     # Microsoft Graph integration
-│   └── orchestrator/              # Task planning & routing
+│   ├── orchestrator/              # Task planning & routing
+│   ├── fabric-client.ts           # Microsoft Fabric REST API client
+│   ├── fabric-analytics.ts        # Audit log streaming to Fabric Lakehouse
+│   └── fabric-workiq.ts           # Work IQ productivity metrics connector
 ├── tests/                         # Automated tests
 ├── scripts/                       # Deployment scripts
 └── .github/workflows/             # CI/CD pipelines

@@ -698,3 +698,88 @@ flowchart TB
 - **Collaboration Velocity** — Measures cross-team handoff speed improvement (e.g., "Cross-app onboarding reduced from 3 days to 45 minutes")
 - **Proactive Recommendations** — Surfaces insights like: "Your team's top 3 time-consuming workflows are all automatable — projected savings: 28 hrs/week"
 - **Viva Insights Integration** — Productivity metrics surface in employees' personal Viva Insights dashboard and managers' team analytics
+
+---
+
+## Microsoft Fabric SDK Integration
+
+The agent includes **production-grade Fabric SDK integration** via three modules that stream operational data into a Microsoft Fabric Lakehouse:
+
+### Source Modules
+
+| Module | File | Purpose |
+|---|---|---|
+| **FabricClient** | `src/fabric-client.ts` | Authenticated REST API wrapper for Fabric. Handles token acquisition via `DefaultAzureCredential`, table loading, pipeline triggering, and SQL analytics queries. |
+| **AnalyticsPipeline** | `src/fabric-analytics.ts` | Buffered audit event streaming. Collects `AuditLogEntry` events, derives `SkillMetric` records, and periodically flushes both to Fabric Lakehouse tables (`audit_events`, `skill_metrics`). Supports configurable flush intervals and auto-flush on buffer overflow. |
+| **WorkIQConnector** | `src/fabric-workiq.ts` | Work IQ / Fabric IQ productivity connector. Computes time saved per skill (manual baseline vs. agent execution), records `WorkIQEvent` entries to Fabric, and queries aggregated productivity insights. |
+
+### Data Flow
+
+```mermaid
+flowchart LR
+    subgraph AgentRuntime["🤖 Agent Runtime"]
+        AuditLogger["Audit Logger"]
+        ToolRouter["Tool Router"]
+    end
+
+    subgraph FabricSDK["📊 Fabric SDK (src/fabric-*)"]
+        Pipeline["AnalyticsPipeline\n(Buffered Streaming)"]
+        WorkIQ["WorkIQConnector\n(Productivity Metrics)"]
+        Client["FabricClient\n(REST API)"]
+    end
+
+    subgraph FabricService["☁️ Microsoft Fabric"]
+        Lakehouse["Lakehouse\n(OneLake)"]
+        Tables["Tables:\n• audit_events\n• skill_metrics\n• work_iq_events"]
+        DataPipeline["Data Pipeline\n(ML Analytics)"]
+        Dashboard["Power BI Dashboard"]
+    end
+
+    AuditLogger -->|"AuditLogEntry"| Pipeline
+    ToolRouter -->|"Skill result"| WorkIQ
+    Pipeline --> Client
+    WorkIQ --> Client
+    Client -->|"Fabric REST API"| Lakehouse
+    Lakehouse --> Tables
+    Pipeline -->|"Trigger"| DataPipeline
+    Tables --> Dashboard
+
+    classDef agent fill:#E8F5E9,stroke:#2E7D32
+    classDef sdk fill:#E8EAF6,stroke:#283593
+    classDef fabric fill:#FCE4EC,stroke:#AD1457
+
+    class AuditLogger,ToolRouter agent
+    class Pipeline,WorkIQ,Client sdk
+    class Lakehouse,Tables,DataPipeline,Dashboard fabric
+```
+
+### Configuration
+
+Set these environment variables to enable Fabric integration:
+
+```env
+FABRIC_ENABLED=true
+FABRIC_WORKSPACE_ID=<your-fabric-workspace-id>
+FABRIC_LAKEHOUSE_ID=<your-fabric-lakehouse-id>
+FABRIC_PIPELINE_ID=<optional-pipeline-id>
+```
+
+### Lakehouse Tables
+
+| Table | Schema | Source |
+|---|---|---|
+| `audit_events` | `id`, `timestamp`, `userId`, `skillName`, `action`, `params`, `result`, `durationMs`, `path`, `approvalRequired`, `approved`, `errorCode` | Every agent skill execution |
+| `skill_metrics` | `skillName`, `path`, `durationMs`, `success`, `timestamp`, `userId` | Derived from audit events |
+| `work_iq_events` | `userId`, `timestamp`, `metricType`, `value`, `unit`, `source`, `metadata` | Productivity tracking |
+
+### Productivity Benchmarks
+
+The Work IQ connector compares agent execution time against manual baselines:
+
+| Skill | Manual Estimate | Typical Agent Time | Time Saved |
+|---|---|---|---|
+| `navigate_page` | 15s | 2s | 87% |
+| `extract_content` | 45s | 3s | 93% |
+| `fill_form` | 60s | 5s | 92% |
+| `orchestrate_workflow` | 5 min | 10s | 97% |
+| `compare_data` | 3 min | 8s | 96% |

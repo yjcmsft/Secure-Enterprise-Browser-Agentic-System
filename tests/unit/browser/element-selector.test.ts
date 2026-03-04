@@ -32,4 +32,28 @@ describe("ElementSelector", () => {
 
     expect((locator.scrollIntoViewIfNeeded as ReturnType<typeof vi.fn>)).toHaveBeenCalledOnce();
   });
+
+  test("selects by xpath", () => {
+    const selector = new ElementSelector();
+    const first = { id: "xpath-result" };
+    const page = {
+      locator: vi.fn(() => ({ first: () => first })),
+    } as unknown as Parameters<ElementSelector["byXPath"]>[0];
+
+    const result = selector.byXPath(page, "//div[@class='item']");
+    expect(page.locator).toHaveBeenCalledWith("xpath=//div[@class='item']");
+    expect(result).toBe(first);
+  });
+
+  test("selects by text", () => {
+    const selector = new ElementSelector();
+    const first = { id: "text-result" };
+    const page = {
+      getByText: vi.fn(() => ({ first: () => first })),
+    } as unknown as Parameters<ElementSelector["byText"]>[0];
+
+    const result = selector.byText(page, "Click me");
+    expect(page.getByText).toHaveBeenCalledWith("Click me");
+    expect(result).toBe(first);
+  });
 });

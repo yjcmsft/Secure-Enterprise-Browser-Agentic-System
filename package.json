@@ -40,14 +40,14 @@
     "node": ">=20.0.0"
   },
   "dependencies": {
-    "@ag-ui/core": "^0.1.2",
-    "@ag-ui/encoder": "^0.1.1",
-    "@azure/ai-projects": "^1.0.0-beta.10",
+    "@ag-ui/core": "^0.0.42",
+    "@ag-ui/encoder": "^0.0.43",
     "@azure-rest/ai-content-safety": "^1.0.0",
+    "@azure/ai-projects": "^1.0.0-beta.10",
     "@azure/cosmos": "^4.2.0",
     "@azure/identity": "^4.5.0",
     "@azure/keyvault-secrets": "^4.9.0",
-    "@copilotkit/runtime": "^1.50.0",
+    "@copilotkit/runtime": "^1.9.3",
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "axios": "^1.7.9",
     "express": "^4.21.1",
@@ -65,13 +65,13 @@
     "@types/node": "^22.10.2",
     "@typescript-eslint/eslint-plugin": "^8.18.0",
     "@typescript-eslint/parser": "^8.18.0",
-    "@vitest/coverage-v8": "^2.1.9",
+    "@vitest/coverage-v8": "^4.0.18",
     "eslint": "^9.16.0",
     "prettier": "^3.4.2",
     "rimraf": "^6.0.1",
     "tsx": "^4.21.0",
     "typescript": "^5.7.2",
-    "vitest": "^2.1.8"
+    "vitest": "^4.0.18"
   },
   "directories": {
     "test": "tests"
