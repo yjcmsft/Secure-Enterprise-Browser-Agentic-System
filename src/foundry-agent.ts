@@ -10,7 +10,8 @@
  *   Azure AI Foundry Agent Service
  */
 
-import { AIProjectClient, type FunctionToolDefinition } from "@azure/ai-projects";
+import { AIProjectClient } from "@azure/ai-projects";
+import type { FunctionToolDefinition } from "@azure/ai-agents";
 import { DefaultAzureCredential } from "@azure/identity";
 import { createLogger, format, transports } from "winston";
 import { config } from "./config.js";
@@ -239,7 +240,7 @@ export async function startFoundryAgent(): Promise<{ client: AIProjectClient; ag
  */
 export async function createThread(): Promise<string> {
   if (!projectClient) throw new Error("Foundry agent not started. Call startFoundryAgent() first.");
-  const thread = await projectClient.agents.createThread();
+  const thread = await projectClient.agents.threads.create();
   logger.info("thread-created", { threadId: thread.id });
   return thread.id;
 }

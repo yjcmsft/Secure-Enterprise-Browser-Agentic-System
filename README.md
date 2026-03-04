@@ -258,29 +258,44 @@ Error codes: `URL_NOT_ALLOWED`, `INPUT_BLOCKED`, `APPROVAL_DENIED`, `OUTPUT_BLOC
 ├── LICENSE                        # MIT License
 ├── package.json                   # Node.js project config
 ├── tsconfig.json                  # TypeScript config
-├── vitest.config.ts               # Test config
+├── vitest.config.ts               # Test config (Vitest)
 ├── eslint.config.js               # Linter config
+├── .prettierrc                    # Code formatter config
+├── .env.example                   # Environment variable template
 ├── Dockerfile                     # Container image
 ├── azure.yaml                     # Azure Developer CLI config
 ├── app-package/                   # Azure AI Foundry agent config
 │   ├── manifest.json              # Agent manifest
 │   ├── declarativeAgent.json      # Agent config (model, streaming, security)
-│   └── browserPlugin.json         # Function tool definitions
+│   ├── browserPlugin.json         # Function tool definitions
+│   └── openapi/                   # OpenAPI specs
+│       ├── browser-tools.yml      # Browser automation tools spec
+│       └── api-connectors.yml     # Native API connectors spec
 ├── infra/                         # Bicep IaC templates
 │   ├── main.bicep                 # Root deployment template
 │   ├── modules/                   # Azure resource modules
 │   └── parameters/                # Environment-specific parameters
 ├── src/                           # Agent source code (TypeScript)
+│   ├── index.ts                   # Application entry point
+│   ├── runtime.ts                 # Express server & middleware
+│   ├── config.ts                  # Environment configuration
+│   ├── foundry-agent.ts           # Azure AI Foundry agent client
+│   ├── agui-handler.ts            # AG-UI SSE streaming handler
+│   ├── fabric/                    # Microsoft Fabric integration
+│   │   ├── client.ts              # Fabric REST API client
+│   │   ├── analytics.ts           # Audit log streaming to Lakehouse
+│   │   └── workiq.ts              # Work IQ productivity metrics connector
+│   ├── types/                     # TypeScript type definitions
 │   ├── skills/                    # Skill implementations
 │   ├── security/                  # Security gates (auth, allowlist, approval)
 │   ├── browser/                   # J-browser-agents integration
 │   ├── api/                       # Native API integration layer
 │   ├── graph/                     # Microsoft Graph integration
-│   ├── orchestrator/              # Task planning & routing
-│   ├── fabric-client.ts           # Microsoft Fabric REST API client
-│   ├── fabric-analytics.ts        # Audit log streaming to Fabric Lakehouse
-│   └── fabric-workiq.ts           # Work IQ productivity metrics connector
+│   └── orchestrator/              # Task planning & routing
 ├── tests/                         # Automated tests
+│   ├── unit/                      # Unit tests
+│   ├── integration/               # Integration tests
+│   └── e2e/                       # End-to-end tests
 ├── scripts/                       # Deployment scripts
 └── .github/workflows/             # CI/CD pipelines
 ```
@@ -295,7 +310,6 @@ Error codes: `URL_NOT_ALLOWED`, `INPUT_BLOCKED`, `APPROVAL_DENIED`, `OUTPUT_BLOC
 | [agents.md](./agents.md) | Agent types, Azure AI Foundry integration, AG-UI streaming, declarative config, lifecycle |
 | [skills.md](./skills.md) | 8 skill definitions, API plugin spec, security classification, Graph API skills |
 | [CHANGELOG.md](./CHANGELOG.md) | Version history, security and reliability improvements |
-| [IMPLEMENTATION_PLAN.md](./IMPLEMENTATION_PLAN.md) | Implementation roadmap and plan |
 
 ---
 

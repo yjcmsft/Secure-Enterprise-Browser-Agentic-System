@@ -29,3 +29,6 @@ Thumbs.db
 
 # TypeScript cache
 *.tsbuildinfo
+
+# Test artifacts
+test-output.txt

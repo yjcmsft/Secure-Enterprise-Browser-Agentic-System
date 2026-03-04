@@ -20,6 +20,4 @@ export const runtime = {
   responseNormalizer: new ResponseNormalizer(),
 };
 
-runtime;
-
-export const sessionManager = new SessionManager(runtime.browserPool, config.SESSION_TTL_MS);
+export const sessionManager= new SessionManager(runtime.browserPool, config.SESSION_TTL_MS);

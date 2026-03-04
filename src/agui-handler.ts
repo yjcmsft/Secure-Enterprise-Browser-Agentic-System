@@ -18,6 +18,13 @@ import { EventType } from "@ag-ui/core";
 import { EventEncoder } from "@ag-ui/encoder";
 import type { Request, Response } from "express";
 import { randomUUID } from "node:crypto";
+import type {
+  MessageTextContent,
+  RequiredFunctionToolCall,
+  SubmitToolOutputsAction,
+  ThreadMessage,
+  ThreadRun,
+} from "@azure/ai-agents";
 import { createLogger, format, transports } from "winston";
 import { executeToolCall, getFoundryAgent, createThread } from "./foundry-agent.js";
 import type { SkillExecutionContext } from "./types/skills.js";
@@ -85,8 +92,8 @@ export async function handleAgUiStream(req: Request, res: Response): Promise<voi
   const runId = randomUUID();
   const messageId = randomUUID();
 
-  function emit(event: Record<string, unknown>): void {
-    const encoded = encoder.encode(event);
+  function emit(event: { type: EventType; [key: string]: unknown }): void {
+    const encoded = encoder.encode(event as Parameters<EventEncoder["encode"]>[0]);
     res.write(encoded);
   }
 
@@ -104,17 +111,14 @@ export async function handleAgUiStream(req: Request, res: Response): Promise<voi
     const threadId = incomingThreadId ?? (await createThread());
 
     // Add user message to thread
-    await foundry.client.agents.createMessage(threadId, {
-      role: "user",
-      content: prompt,
-    });
+    await foundry.client.agents.messages.create(threadId, "user", prompt);
 
     // --- TEXT_MESSAGE_START ---
     emit({ type: EventType.TEXT_MESSAGE_START, messageId, role: "assistant" });
 
     // Create and stream the run
-    const run = await foundry.client.agents.createRun(threadId, foundry.agentId);
-    let currentRun = run;
+    const run: ThreadRun = await foundry.client.agents.runs.create(threadId, foundry.agentId);
+    let currentRun: ThreadRun = run;
 
     // Poll for completion, processing tool calls along the way
     while (
@@ -123,9 +127,15 @@ export async function handleAgUiStream(req: Request, res: Response): Promise<voi
       currentRun.status === "requires_action"
     ) {
       if (currentRun.status === "requires_action") {
-        const toolCalls = currentRun.requiredAction?.submitToolOutputs?.toolCalls ?? [];
+        const action = currentRun.requiredAction;
+        if (!action || action.type !== "submit_tool_outputs") continue;
+        const submitAction = action as SubmitToolOutputsAction;
+        const toolCalls = submitAction.submitToolOutputs.toolCalls;
+        const fnToolCalls = toolCalls.filter(
+          (tc): tc is RequiredFunctionToolCall => tc.type === "function",
+        );
 
-        for (const toolCall of toolCalls) {
+        for (const toolCall of fnToolCalls) {
           const toolCallId = randomUUID();
           const fnName = toolCall.function.name;
           let fnArgs: Record<string, unknown> = {};
@@ -172,7 +182,7 @@ export async function handleAgUiStream(req: Request, res: Response): Promise<voi
 
         // Submit tool outputs back to the agent
         const toolOutputs = await Promise.all(
-          toolCalls.map(async (tc) => {
+          fnToolCalls.map(async (tc) => {
             const args = (() => {
               try {
                 return JSON.parse(tc.function.arguments) as Record<string, unknown>;
@@ -189,32 +199,35 @@ export async function handleAgUiStream(req: Request, res: Response): Promise<voi
           }),
         );
 
-        currentRun = await foundry.client.agents.submitToolOutputsToRun(
+        currentRun = await foundry.client.agents.runs.submitToolOutputs(
           threadId,
           currentRun.id,
           toolOutputs,
-        );
+        ) as ThreadRun;
       } else {
         // Poll with backoff
         await new Promise((r) => setTimeout(r, 500));
-        currentRun = await foundry.client.agents.getRun(threadId, currentRun.id);
+        currentRun = await foundry.client.agents.runs.get(threadId, currentRun.id);
       }
     }
 
     // Retrieve the assistant's final messages
-    const messages = await foundry.client.agents.listMessages(threadId);
-    const assistantMessages = messages.data.filter(
-      (m) => m.role === "assistant" && m.createdAt >= run.createdAt,
-    );
+    const assistantMessages: ThreadMessage[] = [];
+    for await (const m of foundry.client.agents.messages.list(threadId)) {
+      if (m.role === "assistant" && m.createdAt >= run.createdAt) {
+        assistantMessages.push(m);
+      }
+    }
 
     // Stream the response text as chunks
     for (const msg of assistantMessages) {
       for (const content of msg.content) {
         if (content.type === "text") {
+          const textContent = content as MessageTextContent;
           emit({
             type: EventType.TEXT_MESSAGE_CONTENT,
             messageId,
-            delta: content.text.value,
+            delta: textContent.text.value,
           });
         }
       }
