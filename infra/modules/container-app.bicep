@@ -11,6 +11,7 @@ param appInsightsConnectionString string
 resource managedEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
   name: 'cae-${uniqueString(resourceGroup().id)}'
   location: location
+  properties: {}
 }
 
 resource app 'Microsoft.App/containerApps@2024-03-01' = {
