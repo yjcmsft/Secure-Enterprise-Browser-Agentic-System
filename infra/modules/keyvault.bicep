@@ -1,5 +1,5 @@
 param location string
-param enablePurgeProtection bool = false
+param enablePurgeProtection bool = true
 
 resource vault 'Microsoft.KeyVault/vaults@2023-02-01' = {
   name: 'kv-${uniqueString(resourceGroup().id)}'
