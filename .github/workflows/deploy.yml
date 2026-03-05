@@ -6,7 +6,7 @@ on:
     branches: [main]
 
 env:
-  AZURE_LOCATION: eastus
+  AZURE_LOCATION: centralus
 
 permissions:
   id-token: write
