@@ -11,7 +11,6 @@ tests
 Dockerfile
 vitest.config.ts
 eslint.config.js
-tsconfig.json
 scripts
 infra
 app-package
