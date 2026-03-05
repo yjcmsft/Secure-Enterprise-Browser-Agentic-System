@@ -61,7 +61,15 @@ module containerApp 'modules/container-app.bicep' = {
   }
 }
 
+module acr 'modules/acr.bicep' = {
+  name: 'acr-${environment}'
+  params: {
+    location: location
+  }
+}
+
 output appUrl string = containerApp.outputs.appUrl
 output openAIEndpoint string = openai.outputs.endpoint
 output cosmosEndpoint string = cosmos.outputs.endpoint
 output appInsightsConnectionString string = monitoring.outputs.connectionString
+output AZURE_CONTAINER_REGISTRY_ENDPOINT string = acr.outputs.loginServer
