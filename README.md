@@ -1,41 +1,94 @@
 # 🌐 Secure Enterprise Browser Agentic System
 
-> **One prompt. Seven apps. Three minutes. Board-ready.**
+> **One prompt. Seven apps. Three minutes. Board-ready.** ☕
 
-An **Azure AI Foundry Agent** (pro-code, Microsoft Agent Framework) that securely navigates, reads, and acts across enterprise web applications — powered by **Azure OpenAI**, streamed via the **AG-UI protocol** (CopilotKit-compatible), protected by **Azure AI Content Safety**, observed through **Azure Monitor**, and deployed with **Azure Container Apps + Bicep IaC**.
+An **Azure AI Foundry Agent** that securely navigates, reads, and acts across enterprise web applications — so your team doesn't have to.
+
+Built with the **Microsoft Agent Framework**, streamed via **AG-UI** (CopilotKit-compatible), protected by **Azure AI Content Safety**, and deployed to **Azure Container Apps** with full Bicep IaC.
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com)
 [![Built with Azure AI Foundry](https://img.shields.io/badge/Built%20with-Azure%20AI%20Foundry-blue)](https://azure.microsoft.com/products/ai-foundry)
 [![AG-UI Protocol](https://img.shields.io/badge/Streaming-AG--UI%20Protocol-purple)](https://docs.ag-ui.com)
+[![Tests](https://img.shields.io/badge/Tests-392%20passing-brightgreen)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Latest Changes](https://img.shields.io/badge/Latest%20Changes-Changelog-orange)](./CHANGELOG.md)
+
+---
+
+## 🎥 Demo: Operation Skyfall
+
+> *The CEO's assistant needs a competitive revenue comparison, P1 incident status, and a new VP onboarded — all before the 8 AM board meeting.*
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  👤 User                                                        │
+│  "Handle the CEO's morning brief: compare GOOGL/AMZN/AAPL      │
+│   revenue, check ServiceNow P1s, onboard Sarah Chen as VP Eng, │
+│   and send the exec brief to the CEO via Teams."                │
+└──────────────────────────┬──────────────────────────────────────┘
+                           │
+                           ▼
+┌──────────────────────────────────────────────────────────────────┐
+│  🤖 Browser Agent (12 skills, 3 parallel workstreams)           │
+│                                                                  │
+│  ┌─ Workstream 1 ──────────────────────────────────────────┐    │
+│  │ navigate_page → SEC/IR pages for GOOGL, AMZN, AAPL     │    │
+│  │ extract_content → annual revenue + operating income     │    │
+│  │ compare_data → build markdown comparison table          │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                  │
+│  ┌─ Workstream 2 ──────────────────────────────────────────┐    │
+│  │ navigate_page → ServiceNow incident dashboard           │    │
+│  │ extract_content → active P1 incidents                   │    │
+│  │ navigate_page → Grafana payments dashboard              │    │
+│  │ extract_content → EU/APAC error rates                   │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                  │
+│  ┌─ Workstream 3 ──────────────────────────────────────────┐    │
+│  │ fill_form → Workday profile (⚠️ approval required)      │    │
+│  │ fill_form → Jira access provisioning                    │    │
+│  │ submit_action → ServiceNow task assignment              │    │
+│  │ send_teams_message → welcome + board meeting invite     │    │
+│  └─────────────────────────────────────────────────────────┘    │
+│                                                                  │
+│  📊 Result: Executive brief delivered via Teams                 │
+│  ⏱️  Total time: 2 minutes 47 seconds                          │
+│  🛡️  All outputs screened by Azure AI Content Safety           │
+└──────────────────────────────────────────────────────────────────┘
+```
+
+**Without the agent:** 3 people, 7 apps, 4+ hours.
+**With the agent:** 1 prompt, 12 apps, **under 3 minutes**. ⚡
 
 ---
 
 ## Table of Contents
 
+- [Demo: Operation Skyfall](#-demo-operation-skyfall)
 - [Key Features](#-key-features)
 - [Quick Start](#-quick-start)
-- [Demo Scenario](#-demo-scenario)
-- [Architecture Overview](#-architecture-overview)
-- [Security & Responsible AI](#-security--responsible-ai)
-- [API Request Correlation](#-api-request-correlation)
+- [Local Development Demo](#%EF%B8%8F-local-development-demo)
+- [Architecture Overview](#%EF%B8%8F-architecture-overview)
+- [Security & Responsible AI](#%EF%B8%8F-security--responsible-ai)
 - [Repository Structure](#-repository-structure)
+- [Architecture Decision Records](#-architecture-decision-records)
 - [Documentation](#-documentation)
+- [Product Feedback](#-azure-ai-agent-service-sdk--ag-ui-protocol--product-feedback)
 - [License](#license)
 
 ---
 
 ## ✨ Key Features
 
-- **Dual-Path Intelligence** — Native REST/GraphQL APIs first, DOM scraping fallback. 10x more reliable than pure browser automation.
-- **Zero Trust by Default** — Azure Entra ID → URL allowlist → human approval gate → immutable audit log.
-- **Responsible AI Built-In** — Azure AI Content Safety screens all inputs/outputs. Prompt injection defense. PII auto-redaction.
-- **Enterprise Observability** — Application Insights distributed tracing, Azure Monitor dashboards, Cosmos DB audit trail.
-- **AG-UI Streaming** — Real-time SSE streaming via AG-UI protocol. Live tool call progress, shared state, and CopilotKit-ready frontend integration.
-- **Azure AI Foundry Native** — Pro-code agent built with Microsoft Agent Framework (`@azure/ai-projects`). Function tools, thread management, Foundry governance.
-- **One-Command Deployment** — Bicep IaC + GitHub Actions CI/CD. Under 10 minutes to production.
-- **White-Label Reusable** — Skill templates + ISV partner model. Build once, deploy across industries.
+| Feature | What it does | Why it matters |
+|---|---|---|
+| 🔀 **Dual-Path Intelligence** | Native REST/GraphQL APIs first, DOM scraping fallback | 10x more reliable than pure browser automation |
+| 🔒 **Zero Trust Security** | 5-layer pipeline: Entra ID → URL allowlist → Content Safety → approval gate → audit log | Every action is authorized, screened, and auditable |
+| 🤖 **12 Agent Skills** | Navigate, extract, fill, submit, screenshot, compare, workflow, discover APIs + Teams, Calendar, Adaptive Cards, Work Patterns | One agent covers read, write, and collaboration |
+| 📡 **AG-UI Streaming** | Real-time SSE with 17 event types | Live tool call progress in CopilotKit or any AG-UI frontend |
+| ☁️ **Azure AI Foundry Native** | `@azure/ai-projects` with function tools + persistent threads | Enterprise governance, compliance, and observability built in |
+| 📊 **Fabric Analytics + Work IQ** | Lakehouse streaming, productivity metrics, time-saved calculations | Measure ROI: "this workflow saved 4 hours" |
+| 🚀 **One-Command Deploy** | Bicep IaC + GitHub Actions CI/CD → staging → production | Under 10 minutes to production with `azd up` |
+| 🧪 **392 Tests** | Unit + integration + e2e across 52 test files | Confidence to ship daily |
 
 ---
 
@@ -242,37 +295,7 @@ curl -X POST http://localhost:3000/api/skills/navigate_page \
 
 ---
 
-## 🎬 Demo Scenario
-
-> **"Operation Skyfall — The CEO's Impossible Morning"**
-
-The CEO's assistant needs: (1) competitive revenue comparison vs. GOOGL, AMZN, AAPL from public filings, (2) P1 payment outage status from ServiceNow + Grafana, and (3) new VP of Engineering onboarded across Workday, Jira, and ServiceNow — all before an 8 AM board meeting.
-
-**Without the agent:** 3 people, 7 applications, 4+ hours.
-**With the agent:** 1 natural language prompt, 12 applications, **under 3 minutes**.
-
-```
-@BrowserAgent Handle the CEO's morning brief:
-
-1. Pull latest annual revenue and operating income for GOOGL, AMZN,
-   and AAPL from their public investor relations pages. Compare against
-   our numbers. Build a markdown comparison table.
-
-2. Check ServiceNow for any active P1 incidents. Cross-reference with
-   the Grafana payments dashboard for EU and APAC error rates.
-
-3. Onboard Sarah Chen (VP Engineering, starting today) — create her
-   Workday profile, provision Jira access, assign ServiceNow tasks,
-   and send her a Teams welcome message with the board meeting invite.
-
-Format everything as an executive brief and send to the CEO via Teams.
-```
-
-The agent decomposes this into 12 sub-tasks, executes 3 workstreams in parallel, requests human approval for write actions, screens all outputs through Azure AI Content Safety, and delivers a formatted executive brief in **2 minutes 47 seconds**.
-
----
-
-## 🏗️ Architecture Overview
+## ️ Architecture Overview
 
 ```mermaid
 flowchart TB
@@ -505,11 +528,29 @@ Error codes: `URL_NOT_ALLOWED`, `INPUT_BLOCKED`, `APPROVAL_DENIED`, `OUTPUT_BLOC
 ├── scripts/                         # Operational scripts
 │   ├── deploy.ps1                   # Production deployment
 │   ├── deploy-preview.ps1           # Preview deployment
-│   └── setup-azure-oidc.sh         # GitHub Actions OIDC setup
+│   ├── setup-azure-oidc.sh         # GitHub Actions OIDC setup (bash)
+│   └── setup-azure-oidc.ps1        # GitHub Actions OIDC setup (PowerShell)
+├── docs/                            # Decision records & guides
+│   └── adr/                         # Architecture Decision Records (6 ADRs)
 └── .github/workflows/               # CI/CD pipelines
     ├── test.yml                     # PR validation (lint, typecheck, test)
     └── deploy.yml                   # Deploy to staging → production
 ```
+
+---
+
+## � Architecture Decision Records
+
+Key technical decisions are documented as ADRs in [docs/adr/](./docs/adr/):
+
+| ADR | Decision | Why |
+|-----|----------|-----|
+| [001](./docs/adr/001-foundry-over-semantic-kernel.md) | Azure AI Foundry over Semantic Kernel | Built-in thread management, function tools, and Foundry governance |
+| [002](./docs/adr/002-ag-ui-streaming-protocol.md) | AG-UI for frontend streaming | Open standard, CopilotKit-compatible, 17 event types for tool visibility |
+| [003](./docs/adr/003-dual-path-api-dom.md) | API-first, DOM-fallback | 10x reliability for API-enabled apps, universal reach via Playwright |
+| [004](./docs/adr/004-security-pipeline-layered.md) | 5-layer security pipeline | Defense-in-depth: each layer testable and replaceable independently |
+| [005](./docs/adr/005-fabric-analytics-integration.md) | Microsoft Fabric for analytics | Lakehouse tables + Work IQ productivity metrics + pipeline triggers |
+| [006](./docs/adr/006-bicep-iac-over-terraform.md) | Bicep over Terraform | Azure-native, stateless, `azd` integration, zero state file management |
 
 ---
 
@@ -519,8 +560,9 @@ Error codes: `URL_NOT_ALLOWED`, `INPUT_BLOCKED`, `APPROVAL_DENIED`, `OUTPUT_BLOC
 |---|---|
 | [ARCHITECTURE.md](./ARCHITECTURE.md) | Full system architecture, Azure integration, security flows, Foundry/Fabric/Work IQ |
 | [agents.md](./agents.md) | Agent types, Azure AI Foundry integration, AG-UI streaming, lifecycle |
-| [skills.md](./skills.md) | 8 skill definitions, API plugin spec, security classification, Graph API skills |
+| [skills.md](./skills.md) | 12 skill definitions, API plugin spec, security classification, Graph API skills |
 | [CHANGELOG.md](./CHANGELOG.md) | Version history, security and reliability improvements |
+| [docs/adr/](./docs/adr/) | Architecture Decision Records — the "why" behind every major choice |
 
 ---
 
