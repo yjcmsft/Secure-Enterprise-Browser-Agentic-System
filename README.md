@@ -84,6 +84,164 @@ npm start
 
 ---
 
+## 🖥️ Local Development Demo
+
+Run the agent locally and interact with every endpoint using `curl`.
+
+### 1. Setup & Start
+
+```bash
+# Install dependencies
+npm install
+
+# Copy environment template and fill in your values
+cp .env.example .env
+# Edit .env with your Azure credentials (see .env.example for guidance)
+
+# Build and start the server
+npm run build
+npm start
+# Server starts at http://localhost:3000
+```
+
+Or use hot-reload for development:
+
+```bash
+npm run dev
+```
+
+### 2. Health & Readiness
+
+```bash
+# Health check
+curl http://localhost:3000/health
+# {"requestId":"...","status":"healthy"}
+
+# Readiness check (verifies browser pool, Key Vault, audit store)
+curl http://localhost:3000/ready
+# {"requestId":"...","status":"ready","dependencies":{"browser":"ready",...}}
+```
+
+### 3. Invoke Skills Directly
+
+Each of the 8 browser skills can be called via `POST /api/skills/:skillName`:
+
+```bash
+# Navigate to a page
+curl -X POST http://localhost:3000/api/skills/navigate_page \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "demo-user",
+    "sessionId": "demo-session",
+    "params": { "url": "https://learn.microsoft.com" }
+  }'
+
+# Extract content from a page
+curl -X POST http://localhost:3000/api/skills/extract_content \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "demo-user",
+    "sessionId": "demo-session",
+    "params": { "url": "https://learn.microsoft.com", "mode": "text" }
+  }'
+
+# Discover APIs for a target application
+curl -X POST http://localhost:3000/api/skills/discover_apis \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "demo-user",
+    "sessionId": "demo-session",
+    "params": { "baseUrl": "https://learn.microsoft.com" }
+  }'
+
+# Capture a screenshot
+curl -X POST http://localhost:3000/api/skills/capture_screenshot \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "demo-user",
+    "sessionId": "demo-session",
+    "params": {}
+  }'
+
+# Compare data across multiple URLs
+curl -X POST http://localhost:3000/api/skills/compare_data \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "demo-user",
+    "sessionId": "demo-session",
+    "params": {
+      "urls": [
+        "https://learn.microsoft.com/azure",
+        "https://learn.microsoft.com/dotnet"
+      ],
+      "mode": "text"
+    }
+  }'
+```
+
+### 4. Run a Multi-Step Workflow
+
+The workflow endpoint decomposes a natural language prompt into skill steps:
+
+```bash
+curl -X POST http://localhost:3000/api/workflow \
+  -H "Content-Type: application/json" \
+  -d '{
+    "userId": "demo-user",
+    "sessionId": "demo-session",
+    "prompt": "Navigate to learn.microsoft.com and extract all the text content"
+  }'
+```
+
+### 5. AG-UI Streaming (CopilotKit Integration)
+
+The SSE streaming endpoint follows the AG-UI protocol for real-time frontend integration:
+
+```bash
+# Stream agent responses via Server-Sent Events
+curl -X POST http://localhost:3000/api/agui/stream \
+  -H "Content-Type: application/json" \
+  -d '{
+    "prompt": "Navigate to learn.microsoft.com and extract the page title",
+    "userId": "demo-user",
+    "sessionId": "demo-session"
+  }'
+
+# Check session state
+curl http://localhost:3000/api/agui/state/demo-session
+```
+
+Connect a CopilotKit frontend:
+
+```typescript
+import { useAgent } from "@copilotkit/react-core";
+
+function BrowserAgentUI() {
+  const { messages, sendMessage, isLoading } = useAgent({
+    endpoint: "http://localhost:3000/api/agui/stream",
+  });
+  // Render messages with real-time tool call progress
+}
+```
+
+### 6. Request Correlation
+
+All endpoints support request tracing via the `x-request-id` header:
+
+```bash
+curl -X POST http://localhost:3000/api/skills/navigate_page \
+  -H "Content-Type: application/json" \
+  -H "x-request-id: my-trace-123" \
+  -d '{
+    "userId": "demo-user",
+    "sessionId": "demo-session",
+    "params": { "url": "https://learn.microsoft.com" }
+  }'
+# Response includes: {"requestId":"my-trace-123", ...}
+```
+
+---
+
 ## 🎬 Demo Scenario
 
 > **"Operation Skyfall — The CEO's Impossible Morning"**
