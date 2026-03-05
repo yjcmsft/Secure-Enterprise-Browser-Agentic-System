@@ -27,7 +27,7 @@ module keyvault 'modules/keyvault.bicep' = {
   name: 'keyvault-${environment}'
   params: {
     location: location
-    enablePurgeProtection: environment == 'prod'
+    enablePurgeProtection: true
   }
 }
 
