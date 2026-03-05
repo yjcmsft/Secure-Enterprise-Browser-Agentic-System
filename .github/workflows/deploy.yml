@@ -63,6 +63,9 @@ jobs:
       - name: Install azd
         uses: Azure/setup-azd@v2
 
+      - name: Authenticate azd
+        run: azd auth login --client-id ${{ secrets.AZURE_CLIENT_ID }} --federated-credential-provider github --tenant-id ${{ secrets.AZURE_TENANT_ID }}
+
       - name: Provision & deploy to staging
         run: |
           azd env select ${{ env.AZURE_ENV_NAME }} 2>/dev/null || \
@@ -102,6 +105,9 @@ jobs:
 
       - name: Install azd
         uses: Azure/setup-azd@v2
+
+      - name: Authenticate azd
+        run: azd auth login --client-id ${{ secrets.AZURE_CLIENT_ID }} --federated-credential-provider github --tenant-id ${{ secrets.AZURE_TENANT_ID }}
 
       - name: Provision & deploy to production
         run: |
