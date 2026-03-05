@@ -17,6 +17,9 @@ resource managedEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
 resource app 'Microsoft.App/containerApps@2024-03-01' = {
   name: 'browser-agent-app'
   location: location
+  tags: {
+    'azd-service-name': 'browser-agent'
+  }
   identity: {
     type: 'SystemAssigned'
   }
