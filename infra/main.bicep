@@ -4,7 +4,7 @@ targetScope = 'resourceGroup'
 param environment string = 'dev'
 param location string = resourceGroup().location
 param openAIModelName string = 'gpt-4o'
-param containerImage string = 'ghcr.io/example/browser-agent:latest'
+param containerImage string = 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
 param alertEmail string = 'dev@company.com'
 
 module openai 'modules/openai.bicep' = {
