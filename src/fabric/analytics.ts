@@ -9,8 +9,8 @@
  */
 
 import { createLogger, format, transports } from "winston";
-import { FabricClient, type FabricConfig } from "./fabric-client.js";
-import type { AuditLogEntry } from "./types/security.js";
+import { FabricClient, type FabricConfig } from "./client.js";
+import type { AuditLogEntry } from "../types/security.js";
 
 const logger = createLogger({
   level: "info",

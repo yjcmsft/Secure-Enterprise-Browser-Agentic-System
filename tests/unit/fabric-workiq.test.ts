@@ -1,6 +1,6 @@
 import { describe, expect, test } from "vitest";
-import { WorkIQConnector } from "../../src/fabric-workiq.js";
-import { FabricClient } from "../../src/fabric-client.js";
+import { WorkIQConnector } from "../../src/fabric/workiq.js";
+import { FabricClient } from "../../src/fabric/client.js";
 
 function createDisabledClient(): FabricClient {
   return new FabricClient({ workspaceId: "", lakehouseId: "", enabled: false });

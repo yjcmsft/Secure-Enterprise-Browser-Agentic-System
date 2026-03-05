@@ -1,5 +1,5 @@
 import { describe, expect, test, vi, beforeEach } from "vitest";
-import { FabricClient } from "../../src/fabric-client.js";
+import { FabricClient } from "../../src/fabric/client.js";
 
 // Hoist mock variables for use inside vi.mock() factories
 const mockCredential = vi.hoisted(() => ({

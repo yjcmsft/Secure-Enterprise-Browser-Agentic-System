@@ -9,7 +9,7 @@ export default defineConfig({
       provider: "v8",
       reporter: ["text", "json", "html"],
       include: ["src/**/*.ts"],
-      exclude: ["src/types/**", "src/copilot-agent.ts", "src/index.ts"],
+      exclude: ["src/types/**", "src/index.ts"],
     },
   },
 });

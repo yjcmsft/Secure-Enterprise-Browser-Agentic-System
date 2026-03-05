@@ -1,5 +1,5 @@
 import { describe, expect, test } from "vitest";
-import { FabricClient, getFabricConfig } from "../../src/fabric-client.js";
+import { FabricClient, getFabricConfig } from "../../src/fabric/client.js";
 
 describe("getFabricConfig", () => {
   test("returns disabled config when env vars not set", () => {

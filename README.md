@@ -250,54 +250,107 @@ Error codes: `URL_NOT_ALLOWED`, `INPUT_BLOCKED`, `APPROVAL_DENIED`, `OUTPUT_BLOC
 ## 📂 Repository Structure
 
 ```
-├── README.md                      # This file
-├── ARCHITECTURE.md                # Full system architecture with diagrams
-├── agents.md                      # Agent types, Azure AI Foundry, AG-UI streaming, lifecycle
-├── skills.md                      # Skill definitions, API plugin spec
-├── CHANGELOG.md                   # Version history
-├── LICENSE                        # MIT License
-├── package.json                   # Node.js project config
-├── tsconfig.json                  # TypeScript config
-├── vitest.config.ts               # Test config (Vitest)
-├── eslint.config.js               # Linter config
-├── .prettierrc                    # Code formatter config
-├── .env.example                   # Environment variable template
-├── Dockerfile                     # Container image
-├── azure.yaml                     # Azure Developer CLI config
-├── app-package/                   # Azure AI Foundry agent config
-│   ├── manifest.json              # Agent manifest
-│   ├── declarativeAgent.json      # Agent config (model, streaming, security)
-│   ├── browserPlugin.json         # Function tool definitions
-│   └── openapi/                   # OpenAPI specs
-│       ├── browser-tools.yml      # Browser automation tools spec
-│       └── api-connectors.yml     # Native API connectors spec
-├── infra/                         # Bicep IaC templates
-│   ├── main.bicep                 # Root deployment template
-│   ├── modules/                   # Azure resource modules
-│   └── parameters/                # Environment-specific parameters
-├── src/                           # Agent source code (TypeScript)
-│   ├── index.ts                   # Application entry point
-│   ├── runtime.ts                 # Express server & middleware
-│   ├── config.ts                  # Environment configuration
-│   ├── foundry-agent.ts           # Azure AI Foundry agent client
-│   ├── agui-handler.ts            # AG-UI SSE streaming handler
-│   ├── fabric/                    # Microsoft Fabric integration
-│   │   ├── client.ts              # Fabric REST API client
-│   │   ├── analytics.ts           # Audit log streaming to Lakehouse
-│   │   └── workiq.ts              # Work IQ productivity metrics connector
-│   ├── types/                     # TypeScript type definitions
-│   ├── skills/                    # Skill implementations
-│   ├── security/                  # Security gates (auth, allowlist, approval)
-│   ├── browser/                   # J-browser-agents integration
-│   ├── api/                       # Native API integration layer
-│   ├── graph/                     # Microsoft Graph integration
-│   └── orchestrator/              # Task planning & routing
-├── tests/                         # Automated tests
-│   ├── unit/                      # Unit tests
-│   ├── integration/               # Integration tests
-│   └── e2e/                       # End-to-end tests
-├── scripts/                       # Deployment scripts
-└── .github/workflows/             # CI/CD pipelines
+├── README.md                        # This file
+├── ARCHITECTURE.md                  # Full system architecture with diagrams
+├── agents.md                        # Agent types, Azure AI Foundry, AG-UI streaming, lifecycle
+├── skills.md                        # Skill definitions, API plugin spec
+├── CHANGELOG.md                     # Version history
+├── LICENSE                          # MIT License
+├── package.json                     # Node.js project config
+├── tsconfig.json                    # TypeScript config
+├── vitest.config.ts                 # Test config (Vitest)
+├── eslint.config.js                 # Linter config
+├── .prettierrc                      # Code formatter config
+├── .env.example                     # Environment variable template
+├── Dockerfile                       # Container image (multi-stage build)
+├── .dockerignore                    # Docker build exclusion list
+├── azure.yaml                       # Azure Developer CLI config
+├── app-package/                     # Azure AI Foundry agent config
+│   ├── manifest.json                # Agent manifest
+│   ├── declarativeAgent.json        # Agent config (model, streaming, security)
+│   ├── browserPlugin.json           # Function tool definitions
+│   └── openapi/                     # OpenAPI specs
+│       ├── browser-tools.yml        # Browser automation tools spec
+│       └── api-connectors.yml       # Native API connectors spec
+├── infra/                           # Bicep IaC templates
+│   ├── main.bicep                   # Root deployment template
+│   ├── modules/                     # Azure resource modules
+│   │   ├── container-app.bicep      # Container Apps environment + app
+│   │   ├── openai.bicep             # Azure OpenAI (GPT-4o)
+│   │   ├── cosmos.bicep             # Cosmos DB (audit logs)
+│   │   ├── keyvault.bicep           # Key Vault (secrets)
+│   │   ├── monitoring.bicep         # Application Insights + Log Analytics
+│   │   └── content-safety.bicep     # Azure AI Content Safety
+│   └── parameters/                  # Environment-specific parameters
+│       ├── dev.bicepparam
+│       ├── staging.bicepparam
+│       └── prod.bicepparam
+├── src/                             # Agent source code (TypeScript)
+│   ├── index.ts                     # Express server entry point
+│   ├── config.ts                    # Environment configuration
+│   ├── runtime.ts                   # Singleton service instances
+│   ├── foundry-agent.ts             # Azure AI Foundry agent lifecycle + tools
+│   ├── agui-handler.ts              # AG-UI SSE streaming handler
+│   ├── api/                         # Native API integration (dual-path)
+│   │   ├── dual-path-router.ts      # API-first → DOM-fallback routing
+│   │   ├── rest-connector.ts        # REST API connector with retry
+│   │   ├── graphql-connector.ts     # GraphQL connector with retry
+│   │   ├── schema-discovery.ts      # OpenAPI/Swagger spec discovery
+│   │   └── response-normalizer.ts   # Unified response format
+│   ├── browser/                     # Browser automation (Playwright)
+│   │   ├── browser-pool.ts          # Headless browser pool
+│   │   ├── dom-parser.ts            # DOM content extraction
+│   │   ├── element-selector.ts      # CSS/XPath element targeting
+│   │   └── session-manager.ts       # Browser session lifecycle
+│   ├── fabric/                      # Microsoft Fabric analytics
+│   │   ├── index.ts                 # Barrel export
+│   │   ├── client.ts               # Fabric REST API client
+│   │   ├── analytics.ts            # Audit streaming to Lakehouse
+│   │   └── workiq.ts               # Work IQ productivity metrics
+│   ├── graph/                       # Microsoft Graph integration
+│   │   ├── client.ts               # Graph client with token + retry
+│   │   ├── send-teams-message.ts   # Teams messaging skill
+│   │   ├── manage-calendar.ts      # Calendar management skill
+│   │   ├── create-adaptive-card.ts # Adaptive Card builder
+│   │   └── analyze-work-patterns.ts # Work pattern analytics
+│   ├── orchestrator/                # Task planning & routing
+│   │   ├── task-planner.ts          # Prompt → skill decomposition
+│   │   ├── tool-router.ts          # Skill dispatch with retry
+│   │   └── memory-store.ts          # Conversation memory
+│   ├── security/                    # Security pipeline
+│   │   ├── index.ts                 # SecurityGate orchestrator
+│   │   ├── errors.ts               # Typed security error taxonomy
+│   │   ├── url-allowlist.ts        # Domain + path allowlist gate
+│   │   ├── auth-delegation.ts      # Azure Entra ID token proxy
+│   │   ├── approval-gate.ts        # Human-in-the-loop for writes
+│   │   ├── content-safety.ts       # Azure AI Content Safety guard
+│   │   └── audit-logger.ts         # Immutable audit log (Cosmos DB)
+│   ├── skills/                      # Skill implementations
+│   │   ├── index.ts                 # Skill registry
+│   │   ├── navigate-page.ts        # Page navigation
+│   │   ├── extract-content.ts      # Content extraction
+│   │   ├── fill-form.ts            # Form filling (requires approval)
+│   │   ├── submit-action.ts        # Action submission (requires approval)
+│   │   ├── discover-apis.ts        # API endpoint discovery
+│   │   ├── capture-screenshot.ts   # Screenshot capture
+│   │   ├── compare-data.ts         # Multi-source data comparison
+│   │   └── orchestrate-workflow.ts # Multi-step workflow engine
+│   └── types/                       # TypeScript type definitions
+│       ├── api.ts                   # API layer types
+│       ├── browser.ts              # Browser automation types
+│       ├── security.ts             # Security & audit types
+│       └── skills.ts               # Skill handler types
+├── tests/                           # 392 tests across 52 files
+│   ├── unit/                        # Unit tests
+│   ├── integration/                 # Integration tests
+│   └── e2e/                         # End-to-end smoke tests
+├── scripts/                         # Operational scripts
+│   ├── deploy.ps1                   # Production deployment
+│   ├── deploy-preview.ps1           # Preview deployment
+│   └── setup-azure-oidc.sh         # GitHub Actions OIDC setup
+└── .github/workflows/               # CI/CD pipelines
+    ├── test.yml                     # PR validation (lint, typecheck, test)
+    └── deploy.yml                   # Deploy to staging → production
 ```
 
 ---
@@ -306,8 +359,8 @@ Error codes: `URL_NOT_ALLOWED`, `INPUT_BLOCKED`, `APPROVAL_DENIED`, `OUTPUT_BLOC
 
 | Document | Description |
 |---|---|
-| [ARCHITECTURE.md](./ARCHITECTURE.md) | Full system architecture, Azure integration, security flows, Foundry/Fabric/Work IQ, detailed examples |
-| [agents.md](./agents.md) | Agent types, Azure AI Foundry integration, AG-UI streaming, declarative config, lifecycle |
+| [ARCHITECTURE.md](./ARCHITECTURE.md) | Full system architecture, Azure integration, security flows, Foundry/Fabric/Work IQ |
+| [agents.md](./agents.md) | Agent types, Azure AI Foundry integration, AG-UI streaming, lifecycle |
 | [skills.md](./skills.md) | 8 skill definitions, API plugin spec, security classification, Graph API skills |
 | [CHANGELOG.md](./CHANGELOG.md) | Version history, security and reliability improvements |
 
