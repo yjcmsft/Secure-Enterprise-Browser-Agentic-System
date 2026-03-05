@@ -149,7 +149,9 @@ export class WorkIQConnector {
   public async getProductivityInsights(
     userId?: string,
   ): Promise<Record<string, unknown>[]> {
-    const whereClause = userId ? `WHERE userId = '${userId}'` : "";
+    const whereClause = userId
+      ? `WHERE userId = '${userId.replace(/'/g, "''")}' `
+      : "";
     return this.client.queryAnalytics(`
       SELECT metricType,
              SUM(value) as total_value,

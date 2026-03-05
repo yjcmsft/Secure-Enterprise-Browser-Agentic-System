@@ -29,7 +29,7 @@ const ctx: SkillExecutionContext = { userId: "user1", sessionId: "s1" };
 
 describe("Foundry Agent", () => {
   test("functionTools contains exactly 8 tools", () => {
-    expect(functionTools).toHaveLength(8);
+    expect(functionTools).toHaveLength(12);
   });
 
   test("each tool has required schema structure", () => {

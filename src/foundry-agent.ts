@@ -183,6 +183,102 @@ export const functionTools: FunctionToolDefinition[] = [
       },
     },
   },
+  {
+    type: "function",
+    function: {
+      name: "send_teams_message",
+      description:
+        "Send a message to a Microsoft Teams chat or channel via Microsoft Graph.",
+      parameters: {
+        type: "object",
+        properties: {
+          chatId: { type: "string", description: "Teams chat ID for direct messages" },
+          teamId: { type: "string", description: "Teams team ID for channel messages" },
+          channelId: { type: "string", description: "Teams channel ID" },
+          content: { type: "string", description: "Message content (HTML supported)" },
+        },
+        required: ["content"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "manage_calendar",
+      description:
+        "List, create, or update calendar events via Microsoft Graph.",
+      parameters: {
+        type: "object",
+        properties: {
+          action: {
+            type: "string",
+            enum: ["list", "create", "update"],
+            description: "Calendar action to perform",
+          },
+          subject: { type: "string", description: "Event subject" },
+          start: { type: "string", description: "Start datetime (ISO 8601)" },
+          end: { type: "string", description: "End datetime (ISO 8601)" },
+          eventId: { type: "string", description: "Event ID for updates" },
+          attendees: {
+            type: "array",
+            items: { type: "string" },
+            description: "Email addresses of attendees",
+          },
+        },
+        required: ["action"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "create_adaptive_card",
+      description:
+        "Build and send an Adaptive Card to a Teams chat or channel.",
+      parameters: {
+        type: "object",
+        properties: {
+          chatId: { type: "string", description: "Teams chat ID" },
+          teamId: { type: "string", description: "Teams team ID" },
+          channelId: { type: "string", description: "Teams channel ID" },
+          title: { type: "string", description: "Card title" },
+          body: { type: "string", description: "Card body text" },
+          actions: {
+            type: "array",
+            items: {
+              type: "object",
+              properties: {
+                title: { type: "string" },
+                url: { type: "string" },
+              },
+            },
+            description: "Action buttons",
+          },
+        },
+        required: ["title", "body"],
+      },
+    },
+  },
+  {
+    type: "function",
+    function: {
+      name: "analyze_work_patterns",
+      description:
+        "Analyze productivity and work patterns for a user via Microsoft Graph and Work IQ metrics.",
+      parameters: {
+        type: "object",
+        properties: {
+          userId: { type: "string", description: "User ID to analyze" },
+          period: {
+            type: "string",
+            enum: ["day", "week", "month"],
+            description: "Analysis period",
+          },
+        },
+        required: ["userId"],
+      },
+    },
+  },
 ];
 
 // ---------------------------------------------------------------------------

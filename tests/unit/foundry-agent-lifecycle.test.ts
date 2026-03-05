@@ -59,8 +59,8 @@ describe("Foundry Agent Lifecycle", () => {
     vi.clearAllMocks();
   });
 
-  test("functionTools has 8 tools defined", () => {
-    expect(functionTools).toHaveLength(8);
+  test("functionTools has 12 tools defined", () => {
+    expect(functionTools).toHaveLength(12);
     const names = functionTools.map((t) => t.function.name);
     expect(names).toContain("navigate_page");
     expect(names).toContain("extract_content");

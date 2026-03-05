@@ -7,7 +7,7 @@ import {
 
 describe("Foundry Agent function tool definitions", () => {
   test("exports 8 function tool definitions", () => {
-    expect(functionTools).toHaveLength(8);
+    expect(functionTools).toHaveLength(12);
   });
 
   test("all tools have type function", () => {
