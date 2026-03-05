@@ -279,7 +279,6 @@ describe("handleAgUiStream", () => {
     expect(res.end).toHaveBeenCalled();
     // Should emit RUN_ERROR event
     const chunks = (res as unknown as { _chunks: string[] })._chunks;
-    const errorChunk = chunks.find((c: string) => c.includes("RUN_ERROR"));
     // Error event should be emitted (event type is in the chunk)
     expect(chunks.length).toBeGreaterThan(0);
   });

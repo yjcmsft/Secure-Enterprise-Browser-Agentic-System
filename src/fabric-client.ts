@@ -16,7 +16,6 @@
 import { DefaultAzureCredential, type TokenCredential } from "@azure/identity";
 import axios, { type AxiosInstance } from "axios";
 import { createLogger, format, transports } from "winston";
-import { config } from "./config.js";
 
 const logger = createLogger({
   level: "info",

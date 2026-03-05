@@ -59,7 +59,7 @@ describe("BrowserPool", () => {
   });
 
   test("close shuts down browser", async () => {
-    const browser = await pool.getBrowser();
+    await pool.getBrowser();
     await pool.close();
     // After close, getBrowser should launch new browser
     const b2 = await pool.getBrowser();

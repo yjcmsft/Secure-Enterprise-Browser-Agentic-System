@@ -1,4 +1,4 @@
-import { describe, expect, test, vi, beforeEach, afterEach } from "vitest";
+import { describe, expect, test, beforeEach, afterEach } from "vitest";
 import { AnalyticsPipeline } from "../../src/fabric-analytics.js";
 import { FabricClient } from "../../src/fabric-client.js";
 import type { AuditLogEntry } from "../../src/types/security.js";

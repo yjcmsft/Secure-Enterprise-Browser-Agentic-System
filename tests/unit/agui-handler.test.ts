@@ -1,4 +1,4 @@
-import { describe, expect, test, vi } from "vitest";
+import { describe, expect, test } from "vitest";
 import { getSessionState } from "../../src/agui-handler.js";
 
 // Also test the EventType import and handler structure
