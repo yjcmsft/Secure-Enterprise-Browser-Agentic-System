@@ -15,16 +15,17 @@ resource openAi 'Microsoft.CognitiveServices/accounts@2023-05-01' = {
 }
 
 resource deployment 'Microsoft.CognitiveServices/accounts/deployments@2023-05-01' = {
-  name: '${openAi.name}/${modelName}'
+  parent: openAi
+  name: modelName
+  sku: {
+    name: 'Standard'
+    capacity: 1
+  }
   properties: {
     model: {
       format: 'OpenAI'
       name: modelName
       version: modelVersion
-    }
-    scaleSettings: {
-      scaleType: 'Standard'
-      capacity: 1
     }
   }
 }
