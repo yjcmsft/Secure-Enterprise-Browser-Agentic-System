@@ -7,11 +7,17 @@ param cosmosEndpoint string
 param openAIEndpoint string
 param contentSafetyEndpoint string
 param appInsightsConnectionString string
+param acrLoginServer string
+param acrName string
 
 resource managedEnv 'Microsoft.App/managedEnvironments@2024-03-01' = {
   name: 'cae-${uniqueString(resourceGroup().id)}'
   location: location
   properties: {}
+}
+
+resource acr 'Microsoft.ContainerRegistry/registries@2023-07-01' existing = {
+  name: acrName
 }
 
 resource app 'Microsoft.App/containerApps@2024-03-01' = {
@@ -26,6 +32,19 @@ resource app 'Microsoft.App/containerApps@2024-03-01' = {
   properties: {
     managedEnvironmentId: managedEnv.id
     configuration: {
+      registries: [
+        {
+          server: acrLoginServer
+          username: acr.listCredentials().username
+          passwordSecretRef: 'acr-password'
+        }
+      ]
+      secrets: [
+        {
+          name: 'acr-password'
+          value: acr.listCredentials().passwords[0].value
+        }
+      ]
       ingress: {
         external: true
         targetPort: 3000

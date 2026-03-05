@@ -58,6 +58,8 @@ module containerApp 'modules/container-app.bicep' = {
     openAIEndpoint: openai.outputs.endpoint
     contentSafetyEndpoint: contentSafety.outputs.endpoint
     appInsightsConnectionString: monitoring.outputs.connectionString
+    acrLoginServer: acr.outputs.loginServer
+    acrName: acr.outputs.registryName
   }
 }
 
