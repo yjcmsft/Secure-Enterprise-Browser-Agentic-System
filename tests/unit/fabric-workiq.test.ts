@@ -96,4 +96,46 @@ describe("WorkIQConnector", () => {
     const result = await connector.getProductivityInsights();
     expect(result).toEqual([]);
   });
+
+  test("calculateROI returns zeros when disabled", async () => {
+    const roi = await connector.calculateROI(50);
+    expect(roi.totalHoursSaved).toBe(0);
+    expect(roi.totalCostSaved).toBe(0);
+    expect(roi.totalWorkflows).toBe(0);
+    expect(roi.automationRate).toBe(0);
+    expect(roi.avgTimePerWorkflow).toBe(0);
+  });
+
+  test("calculateROI accepts custom hourly rate", async () => {
+    const roi = await connector.calculateROI(100);
+    expect(roi).toHaveProperty("totalCostSaved");
+    expect(roi).toHaveProperty("totalHoursSaved");
+  });
+
+  test("getFoundryIQMetrics returns empty when disabled", async () => {
+    const metrics = await connector.getFoundryIQMetrics();
+    expect(metrics).toEqual([]);
+  });
+
+  test("getIndustryBenchmark returns financial services data", () => {
+    const b = connector.getIndustryBenchmark("financial_services");
+    expect(b.avgWorkflowsPerDay).toBe(150);
+    expect(b.avgTimeSavedPerWorkflow).toBe(12);
+    expect(b.annualFTESaved).toBeGreaterThan(0);
+    expect(b.annualCostSaved).toBeGreaterThan(0);
+  });
+
+  test("getIndustryBenchmark returns healthcare data", () => {
+    const b = connector.getIndustryBenchmark("healthcare");
+    expect(b.avgWorkflowsPerDay).toBe(80);
+    expect(b.avgTimeSavedPerWorkflow).toBe(18);
+  });
+
+  test("getIndustryBenchmark returns all industries", () => {
+    for (const industry of ["financial_services", "healthcare", "manufacturing", "retail", "technology"] as const) {
+      const b = connector.getIndustryBenchmark(industry);
+      expect(b.annualFTESaved).toBeGreaterThan(0);
+      expect(b.annualCostSaved).toBeGreaterThan(0);
+    }
+  });
 });
