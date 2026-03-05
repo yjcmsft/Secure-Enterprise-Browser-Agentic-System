@@ -1,18 +1,21 @@
 import { describe, expect, test, vi, beforeEach } from "vitest";
 
+// Hoist mock variables so they're accessible inside vi.mock() factories
+const { mockGraphApi } = vi.hoisted(() => ({
+  mockGraphApi: {
+    get: vi.fn().mockResolvedValue({ value: [] }),
+    post: vi.fn().mockResolvedValue({ id: "new-1" }),
+  },
+}));
+
 // Mock Azure SDK
 vi.mock("@azure/identity", () => ({
-  DefaultAzureCredential: vi.fn().mockImplementation(() => ({
+  DefaultAzureCredential: vi.fn(() => ({
     getToken: vi.fn().mockResolvedValue({ token: "header.eyJzdWIiOiJ1c2VyMSIsInNjcCI6IkNhbGVuZGFycy5SZWFkIENoYXQuUmVhZFdyaXRlIn0.sig" }),
   })),
 }));
 
 // Mock Microsoft Graph client
-const mockGraphApi = {
-  get: vi.fn().mockResolvedValue({ value: [] }),
-  post: vi.fn().mockResolvedValue({ id: "new-1" }),
-};
-
 vi.mock("@microsoft/microsoft-graph-client", () => ({
   Client: {
     init: vi.fn().mockReturnValue({
@@ -21,8 +24,8 @@ vi.mock("@microsoft/microsoft-graph-client", () => ({
   },
 }));
 
-import { withGraphClient } from "../../../src/graph/client.js";
-import type { SkillExecutionContext } from "../../../src/types/skills.js";
+import { withGraphClient } from "../../src/graph/client.js";
+import type { SkillExecutionContext } from "../../src/types/skills.js";
 
 const ctx: SkillExecutionContext = {
   userId: "user1",

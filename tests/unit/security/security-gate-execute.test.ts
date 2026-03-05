@@ -2,30 +2,42 @@ import { describe, expect, test, vi, beforeEach } from "vitest";
 import { SecurityGate } from "../../../src/security/index.js";
 import type { SkillExecutionContext } from "../../../src/types/skills.js";
 
+const { MockAuthDelegation, MockContentSafetyGuard, MockAuditLogger } = vi.hoisted(() => ({
+  MockAuthDelegation: vi.fn(function MockAuthDelegation() {
+    return {
+      getDelegatedToken: vi.fn().mockResolvedValue("mock-token"),
+      checkReadiness: vi.fn().mockResolvedValue({ keyVault: "skipped" }),
+    };
+  }),
+  MockContentSafetyGuard: vi.fn(function MockContentSafetyGuard() {
+    return {
+      screenInput: vi.fn().mockResolvedValue({ allowed: true, blockedCategories: [] }),
+      screenOutput: vi.fn().mockResolvedValue({
+        allowed: true,
+        blockedCategories: [],
+        redactedText: null,
+      }),
+    };
+  }),
+  MockAuditLogger: vi.fn(function MockAuditLogger() {
+    return {
+      log: vi.fn().mockResolvedValue(undefined),
+      checkReadiness: vi.fn().mockResolvedValue({ auditStore: "skipped" }),
+    };
+  }),
+}));
+
 // Mock dependencies to test SecurityGate in isolation
 vi.mock("../../../src/security/auth-delegation.js", () => ({
-  AuthDelegation: vi.fn().mockImplementation(() => ({
-    getDelegatedToken: vi.fn().mockResolvedValue("mock-token"),
-    checkReadiness: vi.fn().mockResolvedValue({ keyVault: "skipped" }),
-  })),
+  AuthDelegation: MockAuthDelegation,
 }));
 
 vi.mock("../../../src/security/content-safety.js", () => ({
-  ContentSafetyGuard: vi.fn().mockImplementation(() => ({
-    screenInput: vi.fn().mockResolvedValue({ allowed: true, blockedCategories: [] }),
-    screenOutput: vi.fn().mockResolvedValue({
-      allowed: true,
-      blockedCategories: [],
-      redactedText: null,
-    }),
-  })),
+  ContentSafetyGuard: MockContentSafetyGuard,
 }));
 
 vi.mock("../../../src/security/audit-logger.js", () => ({
-  AuditLogger: vi.fn().mockImplementation(() => ({
-    log: vi.fn().mockResolvedValue(undefined),
-    checkReadiness: vi.fn().mockResolvedValue({ auditStore: "skipped" }),
-  })),
+  AuditLogger: MockAuditLogger,
 }));
 
 describe("SecurityGate.executeWithSecurity", () => {

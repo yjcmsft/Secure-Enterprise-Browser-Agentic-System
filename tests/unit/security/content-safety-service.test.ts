@@ -1,25 +1,30 @@
 import { describe, expect, test, vi, beforeEach } from "vitest";
 
-// Mock Content Safety client with service endpoint
-const mockPost = vi.fn();
+// Hoist mock variables so they're accessible inside vi.mock() factories
+const { mockPost } = vi.hoisted(() => ({
+  mockPost: vi.fn(),
+}));
 
+// Mock Content Safety client with service endpoint
 vi.mock("@azure-rest/ai-content-safety", () => {
   const client = vi.fn().mockReturnValue({
     path: vi.fn().mockReturnValue({ post: mockPost }),
   });
-  // isUnexpected mock
-  (client as unknown as { isUnexpected: ReturnType<typeof vi.fn> }).isUnexpected = vi.fn().mockReturnValue(false);
   return {
     default: client,
     isUnexpected: vi.fn().mockReturnValue(false),
   };
 });
 
-vi.mock("@azure/identity", () => ({
-  DefaultAzureCredential: vi.fn().mockImplementation(() => ({})),
+const { MockDefaultAzureCredential } = vi.hoisted(() => ({
+  MockDefaultAzureCredential: vi.fn(),
 }));
 
-vi.mock("../../src/config.js", () => ({
+vi.mock("@azure/identity", () => ({
+  DefaultAzureCredential: MockDefaultAzureCredential,
+}));
+
+vi.mock("../../../src/config.js", () => ({
   config: {
     CONTENT_SAFETY_ENDPOINT: "https://content-safety.cognitiveservices.azure.com",
     CONTENT_SAFETY_BLOCK_THRESHOLD: 4,
@@ -32,7 +37,7 @@ vi.mock("../../src/config.js", () => ({
   },
 }));
 
-import { ContentSafetyGuard } from "../../src/security/content-safety.js";
+import { ContentSafetyGuard } from "../../../src/security/content-safety.js";
 
 describe("ContentSafetyGuard with Azure service", () => {
   let guard: ContentSafetyGuard;

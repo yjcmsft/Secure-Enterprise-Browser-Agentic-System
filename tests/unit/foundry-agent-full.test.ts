@@ -7,16 +7,22 @@ import {
 } from "../../src/foundry-agent.js";
 import type { SkillExecutionContext } from "../../src/types/skills.js";
 
+const { MockToolRouter } = vi.hoisted(() => ({
+  MockToolRouter: vi.fn(function MockToolRouter() {
+    return {
+      run: vi.fn().mockResolvedValue({
+        skill: "navigate_page",
+        success: true,
+        data: { title: "Page" },
+        durationMs: 10,
+      }),
+    };
+  }),
+}));
+
 // Mock the tool router to test executeToolCall
 vi.mock("../../src/orchestrator/tool-router.js", () => ({
-  ToolRouter: vi.fn().mockImplementation(() => ({
-    run: vi.fn().mockResolvedValue({
-      skill: "navigate_page",
-      success: true,
-      data: { title: "Page" },
-      durationMs: 10,
-    }),
-  })),
+  ToolRouter: MockToolRouter,
 }));
 
 const ctx: SkillExecutionContext = { userId: "user1", sessionId: "s1" };

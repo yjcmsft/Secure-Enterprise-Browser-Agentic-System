@@ -1,23 +1,25 @@
 import { describe, expect, test, vi, beforeEach } from "vitest";
 
-// Mock Azure Identity for AuthDelegation
-const mockGetToken = vi.fn().mockResolvedValue({ token: "azure-delegated-token" });
-const mockGetSecret = vi.fn();
+// Hoist mock variables so they're accessible inside vi.mock() factories
+const { mockGetToken, mockGetSecret } = vi.hoisted(() => ({
+  mockGetToken: vi.fn().mockResolvedValue({ token: "azure-delegated-token" }),
+  mockGetSecret: vi.fn(),
+}));
 
 vi.mock("@azure/identity", () => ({
-  DefaultAzureCredential: vi.fn().mockImplementation(() => ({
-    getToken: mockGetToken,
-  })),
+  DefaultAzureCredential: vi.fn(function DefaultAzureCredential() {
+    return { getToken: mockGetToken };
+  }),
 }));
 
 vi.mock("@azure/keyvault-secrets", () => ({
-  SecretClient: vi.fn().mockImplementation(() => ({
-    getSecret: mockGetSecret,
-  })),
+  SecretClient: vi.fn(function SecretClient() {
+    return { getSecret: mockGetSecret };
+  }),
 }));
 
 // Mock config with Key Vault URL
-vi.mock("../../src/config.js", () => ({
+vi.mock("../../../src/config.js", () => ({
   config: {
     KEY_VAULT_URL: "https://test-vault.vault.azure.net",
     TARGET_APP_SCOPE: "https://target-app/.default",
@@ -34,7 +36,7 @@ vi.mock("../../src/config.js", () => ({
   },
 }));
 
-import { AuthDelegation } from "../../src/security/auth-delegation.js";
+import { AuthDelegation } from "../../../src/security/auth-delegation.js";
 
 describe("AuthDelegation with Key Vault", () => {
   let auth: AuthDelegation;

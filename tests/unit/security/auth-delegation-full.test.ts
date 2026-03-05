@@ -1,17 +1,26 @@
 import { describe, expect, test, vi, beforeEach } from "vitest";
 import { AuthDelegation } from "../../../src/security/auth-delegation.js";
 
+const { MockDefaultAzureCredential, MockSecretClient } = vi.hoisted(() => ({
+  MockDefaultAzureCredential: vi.fn(function MockDefaultAzureCredential() {
+    return {
+      getToken: vi.fn().mockResolvedValue({ token: "mock-azure-token" }),
+    };
+  }),
+  MockSecretClient: vi.fn(function MockSecretClient() {
+    return {
+      getSecret: vi.fn().mockRejectedValue({ statusCode: 404 }),
+    };
+  }),
+}));
+
 // Mock Azure SDK
 vi.mock("@azure/identity", () => ({
-  DefaultAzureCredential: vi.fn().mockImplementation(() => ({
-    getToken: vi.fn().mockResolvedValue({ token: "mock-azure-token" }),
-  })),
+  DefaultAzureCredential: MockDefaultAzureCredential,
 }));
 
 vi.mock("@azure/keyvault-secrets", () => ({
-  SecretClient: vi.fn().mockImplementation(() => ({
-    getSecret: vi.fn().mockRejectedValue({ statusCode: 404 }),
-  })),
+  SecretClient: MockSecretClient,
 }));
 
 describe("AuthDelegation", () => {

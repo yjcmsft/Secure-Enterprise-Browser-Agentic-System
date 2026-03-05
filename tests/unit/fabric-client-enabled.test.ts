@@ -1,21 +1,24 @@
 import { describe, expect, test, vi, beforeEach } from "vitest";
 import { FabricClient } from "../../src/fabric-client.js";
 
-// Mock Azure Identity
-const mockCredential = {
+// Hoist mock variables for use inside vi.mock() factories
+const mockCredential = vi.hoisted(() => ({
   getToken: vi.fn().mockResolvedValue({ token: "mock-fabric-token" }),
-};
+}));
 
+const mockAxiosInstance = vi.hoisted(() => ({
+  post: vi.fn().mockResolvedValue({ data: { id: "run-1" } }),
+  get: vi.fn().mockResolvedValue({ data: { results: [{ count: 42 }] } }),
+}));
+
+// Mock Azure Identity
 vi.mock("@azure/identity", () => ({
-  DefaultAzureCredential: vi.fn().mockImplementation(() => mockCredential),
+  DefaultAzureCredential: vi.fn(function DefaultAzureCredential() {
+    return mockCredential;
+  }),
 }));
 
 // Mock axios
-const mockAxiosInstance = {
-  post: vi.fn().mockResolvedValue({ data: { id: "run-1" } }),
-  get: vi.fn().mockResolvedValue({ data: { results: [{ count: 42 }] } }),
-};
-
 vi.mock("axios", () => ({
   default: {
     create: vi.fn().mockReturnValue(mockAxiosInstance),
@@ -79,7 +82,10 @@ describe("FabricClient (enabled)", () => {
     expect(result).toBeNull();
   });
 
-  test("queryAnalytics returns results", async () => {
+  test("queryAnalytics returns results when response contains results", async () => {
+    mockAxiosInstance.post.mockResolvedValueOnce({
+      data: { results: [{ count: 42 }] },
+    });
     const result = await client.queryAnalytics("SELECT COUNT(*) FROM audit_events");
     expect(result).toEqual([{ count: 42 }]);
   });

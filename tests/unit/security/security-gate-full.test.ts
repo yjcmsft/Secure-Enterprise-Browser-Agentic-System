@@ -1,7 +1,15 @@
 import { describe, expect, test, vi, beforeEach } from "vitest";
 
+const { MockDefaultAzureCredential } = vi.hoisted(() => ({
+  MockDefaultAzureCredential: vi.fn(function MockDefaultAzureCredential() {
+    return {
+      getToken: vi.fn().mockResolvedValue({ token: "mock-token" }),
+    };
+  }),
+}));
+
 // Mock config
-vi.mock("../../src/config.js", () => ({
+vi.mock("../../../src/config.js", () => ({
   config: {
     CONTENT_SAFETY_ENDPOINT: "",
     CONTENT_SAFETY_BLOCK_THRESHOLD: 4,
@@ -19,13 +27,11 @@ vi.mock("../../src/config.js", () => ({
 }));
 
 vi.mock("@azure/identity", () => ({
-  DefaultAzureCredential: vi.fn().mockImplementation(() => ({
-    getToken: vi.fn().mockResolvedValue({ token: "mock-token" }),
-  })),
+  DefaultAzureCredential: MockDefaultAzureCredential,
 }));
 
-import { SecurityGate } from "../../src/security/index.js";
-import { SecurityError } from "../../src/security/errors.js";
+import { SecurityGate } from "../../../src/security/index.js";
+import { SecurityError } from "../../../src/security/errors.js";
 
 describe("SecurityGate full flow", () => {
   let gate: SecurityGate;
@@ -71,7 +77,7 @@ describe("SecurityGate full flow", () => {
     } catch (error) {
       expect(error).toBeInstanceOf(SecurityError);
       expect((error as SecurityError).code).toBe("URL_NOT_ALLOWED");
-      expect((error as SecurityError).statusCode).toBe(403);
+      expect((error as SecurityError).httpStatus).toBe(403);
     }
   });
 

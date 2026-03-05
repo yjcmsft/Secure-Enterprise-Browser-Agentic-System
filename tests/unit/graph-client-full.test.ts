@@ -1,22 +1,24 @@
 import { describe, expect, test, vi, beforeEach } from "vitest";
 
-// Mock Azure Identity
-const mockGetToken = vi.fn().mockResolvedValue({ token: "mock-graph-token" });
+// Hoist mock variables so they're accessible inside vi.mock() factories
+const { mockGetToken, mockApi } = vi.hoisted(() => ({
+  mockGetToken: vi.fn().mockResolvedValue({ token: "mock-graph-token" }),
+  mockApi: {
+    get: vi.fn().mockResolvedValue({ value: [] }),
+    post: vi.fn().mockResolvedValue({ id: "msg-1" }),
+    patch: vi.fn().mockResolvedValue({ id: "evt-1" }),
+    top: vi.fn().mockReturnThis(),
+  },
+}));
 
+// Mock Azure Identity
 vi.mock("@azure/identity", () => ({
-  DefaultAzureCredential: vi.fn().mockImplementation(() => ({
-    getToken: mockGetToken,
-  })),
+  DefaultAzureCredential: vi.fn(function DefaultAzureCredential() {
+    return { getToken: mockGetToken };
+  }),
 }));
 
 // Mock Graph client
-const mockApi = {
-  get: vi.fn().mockResolvedValue({ value: [] }),
-  post: vi.fn().mockResolvedValue({ id: "msg-1" }),
-  patch: vi.fn().mockResolvedValue({ id: "evt-1" }),
-  top: vi.fn().mockReturnThis(),
-};
-
 vi.mock("@microsoft/microsoft-graph-client", () => ({
   Client: {
     init: vi.fn().mockReturnValue({ api: vi.fn().mockReturnValue(mockApi) }),

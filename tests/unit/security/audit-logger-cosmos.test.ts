@@ -1,21 +1,26 @@
 import { describe, expect, test, vi, beforeEach } from "vitest";
 
-// Mock Cosmos DB
-const mockCreate = vi.fn().mockResolvedValue({ resource: {} });
-const mockRead = vi.fn().mockResolvedValue({ resource: {} });
-
-vi.mock("@azure/cosmos", () => ({
-  CosmosClient: vi.fn().mockImplementation(() => ({
-    database: vi.fn().mockReturnValue({
-      container: vi.fn().mockReturnValue({
-        items: { create: mockCreate },
-        read: mockRead,
-      }),
-    }),
-  })),
+// Hoist mock variables so they're accessible inside vi.mock() factories
+const { mockCreate, mockRead } = vi.hoisted(() => ({
+  mockCreate: vi.fn().mockResolvedValue({ resource: {} }),
+  mockRead: vi.fn().mockResolvedValue({ resource: {} }),
 }));
 
-vi.mock("../../src/config.js", () => ({
+// Mock Cosmos DB
+vi.mock("@azure/cosmos", () => ({
+  CosmosClient: vi.fn(function CosmosClient() {
+    return {
+      database: vi.fn().mockReturnValue({
+        container: vi.fn().mockReturnValue({
+          items: { create: mockCreate },
+          read: mockRead,
+        }),
+      }),
+    };
+  }),
+}));
+
+vi.mock("../../../src/config.js", () => ({
   config: {
     COSMOS_ENDPOINT: "https://test-cosmos.documents.azure.com:443/",
     COSMOS_KEY: "fake-cosmos-key",
@@ -32,7 +37,7 @@ vi.mock("../../src/config.js", () => ({
   },
 }));
 
-import { AuditLogger } from "../../src/security/audit-logger.js";
+import { AuditLogger } from "../../../src/security/audit-logger.js";
 
 describe("AuditLogger with Cosmos DB", () => {
   let logger: AuditLogger;
@@ -100,7 +105,7 @@ describe("AuditLogger without Cosmos DB", () => {
   test("logs to in-memory store", async () => {
     // Override config to have no Cosmos
     vi.resetModules();
-    vi.doMock("../../src/config.js", () => ({
+    vi.doMock("../../../src/config.js", () => ({
       config: {
         COSMOS_ENDPOINT: "",
         COSMOS_KEY: "",
@@ -109,7 +114,7 @@ describe("AuditLogger without Cosmos DB", () => {
       },
     }));
 
-    const { AuditLogger: AuditLoggerNoDb } = await import("../../src/security/audit-logger.js");
+    const { AuditLogger: AuditLoggerNoDb } = await import("../../../src/security/audit-logger.js");
     const logger = new AuditLoggerNoDb();
 
     await logger.log({

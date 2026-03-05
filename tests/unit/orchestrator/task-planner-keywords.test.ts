@@ -1,6 +1,6 @@
 import { describe, expect, test, vi, beforeEach } from "vitest";
 
-vi.mock("../../src/config.js", () => ({
+vi.mock("../../../src/config.js", () => ({
   config: {
     AZURE_OPENAI_ENDPOINT: "",
     AZURE_OPENAI_MODEL: "gpt-4o",
@@ -14,7 +14,7 @@ vi.mock("../../src/config.js", () => ({
   },
 }));
 
-import { TaskPlanner } from "../../src/orchestrator/task-planner.js";
+import { TaskPlanner } from "../../../src/orchestrator/task-planner.js";
 
 describe("TaskPlanner keyword planning", () => {
   let planner: TaskPlanner;

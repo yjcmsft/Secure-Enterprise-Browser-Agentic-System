@@ -1,7 +1,7 @@
 import { describe, expect, test, vi, beforeEach } from "vitest";
 
 // Mock config with NO Content Safety endpoint (forces fallback path)
-vi.mock("../../src/config.js", () => ({
+vi.mock("../../../src/config.js", () => ({
   config: {
     CONTENT_SAFETY_ENDPOINT: "",
     CONTENT_SAFETY_BLOCK_THRESHOLD: 4,
@@ -18,11 +18,15 @@ vi.mock("../../src/config.js", () => ({
   },
 }));
 
-vi.mock("@azure/identity", () => ({
-  DefaultAzureCredential: vi.fn().mockImplementation(() => ({})),
+const { MockDefaultAzureCredential } = vi.hoisted(() => ({
+  MockDefaultAzureCredential: vi.fn(),
 }));
 
-import { ContentSafetyGuard } from "../../src/security/content-safety.js";
+vi.mock("@azure/identity", () => ({
+  DefaultAzureCredential: MockDefaultAzureCredential,
+}));
+
+import { ContentSafetyGuard } from "../../../src/security/content-safety.js";
 
 describe("ContentSafetyGuard fallback evaluation", () => {
   let guard: ContentSafetyGuard;

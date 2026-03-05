@@ -1,22 +1,23 @@
 import { describe, expect, test, vi, beforeEach } from "vitest";
 
-// Mock Azure SDK modules
-const mockAgent = { id: "agent-1" };
-const mockThread = { id: "thread-1" };
-const mockProjectClient = {
+const mockProjectClient = vi.hoisted(() => ({
   agents: {
-    createAgent: vi.fn().mockResolvedValue(mockAgent),
+    createAgent: vi.fn().mockResolvedValue({ id: "agent-1" }),
     deleteAgent: vi.fn().mockResolvedValue(undefined),
-    createThread: vi.fn().mockResolvedValue(mockThread),
+    threads: {
+      create: vi.fn().mockResolvedValue({ id: "thread-1" }),
+    },
   },
-};
+}));
 
 vi.mock("@azure/ai-projects", () => ({
-  AIProjectClient: vi.fn().mockImplementation(() => mockProjectClient),
+  AIProjectClient: vi.fn(function AIProjectClient() {
+    return mockProjectClient;
+  }),
 }));
 
 vi.mock("@azure/identity", () => ({
-  DefaultAzureCredential: vi.fn().mockImplementation(() => ({})),
+  DefaultAzureCredential: vi.fn(),
 }));
 
 // Mock config to provide endpoint
@@ -36,9 +37,11 @@ vi.mock("../../src/config.js", () => ({
 
 // Mock the tool-router
 vi.mock("../../src/orchestrator/tool-router.js", () => ({
-  ToolRouter: vi.fn().mockImplementation(() => ({
-    run: vi.fn().mockResolvedValue({ success: true, data: "mocked" }),
-  })),
+  ToolRouter: vi.fn(function ToolRouter() {
+    return {
+      run: vi.fn().mockResolvedValue({ success: true, data: "mocked" }),
+    };
+  }),
 }));
 
 import {
@@ -81,7 +84,7 @@ describe("Foundry Agent Lifecycle", () => {
   test("AGENT_INSTRUCTIONS contains security rules", () => {
     expect(AGENT_INSTRUCTIONS).toContain("URL allowlist");
     expect(AGENT_INSTRUCTIONS).toContain("approval");
-    expect(AGENT_INSTRUCTIONS).toContain("never");
+    expect(AGENT_INSTRUCTIONS.toLowerCase()).toContain("never");
   });
 
   test("startFoundryAgent creates agent and returns client + id", async () => {
@@ -109,7 +112,7 @@ describe("Foundry Agent Lifecycle", () => {
     await startFoundryAgent();
     const threadId = await createThread();
     expect(threadId).toBe("thread-1");
-    expect(mockProjectClient.agents.createThread).toHaveBeenCalled();
+    expect(mockProjectClient.agents.threads.create).toHaveBeenCalled();
   });
 
   test("createThread throws when agent not started", async () => {

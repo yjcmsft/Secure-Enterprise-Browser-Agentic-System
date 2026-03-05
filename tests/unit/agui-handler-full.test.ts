@@ -1,30 +1,66 @@
 import { describe, expect, test, vi, beforeEach } from "vitest";
 import type { Request, Response } from "express";
 
-// Mock the foundry-agent module
-const mockCreateThread = vi.fn().mockResolvedValue("thread-123");
-const mockExecuteToolCall = vi.fn().mockResolvedValue('{"result":"ok"}');
-const mockFoundryClient = {
-  agents: {
-    createMessage: vi.fn().mockResolvedValue({}),
-    createRun: vi.fn().mockResolvedValue({
-      id: "run-1",
-      status: "completed",
-      createdAt: new Date(0),
-    }),
-    getRun: vi.fn().mockResolvedValue({ id: "run-1", status: "completed" }),
-    submitToolOutputsToRun: vi.fn().mockResolvedValue({ id: "run-1", status: "completed" }),
-    listMessages: vi.fn().mockResolvedValue({
-      data: [
-        {
-          role: "assistant",
-          createdAt: new Date(),
-          content: [{ type: "text", text: { value: "Hello from agent" } }],
+// Hoist mock variables so they're accessible inside vi.mock() factories
+const {
+  createAsyncIterable,
+  defaultMessages,
+  mockCreateThread,
+  mockExecuteToolCall,
+  mockFoundryClient,
+  MockEventEncoder,
+} = vi.hoisted(() => {
+  function _createAsyncIterable<T>(items: T[]): AsyncIterable<T> {
+    return {
+      [Symbol.asyncIterator]() {
+        let i = 0;
+        return {
+          async next() {
+            if (i < items.length) return { value: items[i++]!, done: false };
+            return { value: undefined as unknown as T, done: true };
+          },
+        };
+      },
+    };
+  }
+
+  const _defaultMessages = [
+    {
+      role: "assistant",
+      createdAt: new Date(),
+      content: [{ type: "text", text: { value: "Hello from agent" } }],
+    },
+  ];
+
+  return {
+    createAsyncIterable: _createAsyncIterable,
+    defaultMessages: _defaultMessages,
+    mockCreateThread: vi.fn().mockResolvedValue("thread-123"),
+    mockExecuteToolCall: vi.fn().mockResolvedValue('{"result":"ok"}'),
+    mockFoundryClient: {
+      agents: {
+        messages: {
+          create: vi.fn().mockResolvedValue({}),
+          list: vi.fn().mockReturnValue(_createAsyncIterable(_defaultMessages)),
         },
-      ],
+        runs: {
+          create: vi.fn().mockResolvedValue({
+            id: "run-1",
+            status: "completed",
+            createdAt: new Date(0),
+          }),
+          get: vi.fn().mockResolvedValue({ id: "run-1", status: "completed" }),
+          submitToolOutputs: vi.fn().mockResolvedValue({ id: "run-1", status: "completed" }),
+        },
+      },
+    },
+    MockEventEncoder: vi.fn(function MockEventEncoder() {
+      return {
+        encode: vi.fn((event: unknown) => `data: ${JSON.stringify(event)}\n\n`),
+      };
     }),
-  },
-};
+  };
+});
 
 vi.mock("../../src/foundry-agent.js", () => ({
   getFoundryAgent: vi.fn().mockReturnValue({
@@ -36,9 +72,7 @@ vi.mock("../../src/foundry-agent.js", () => ({
 }));
 
 vi.mock("@ag-ui/encoder", () => ({
-  EventEncoder: vi.fn().mockImplementation(() => ({
-    encode: vi.fn((event: unknown) => `data: ${JSON.stringify(event)}\n\n`),
-  })),
+  EventEncoder: MockEventEncoder,
 }));
 
 import { handleAgUiStream, getSessionState } from "../../src/agui-handler.js";
@@ -60,6 +94,18 @@ function createMockReqRes(body: Record<string, unknown> = {}) {
 describe("handleAgUiStream", () => {
   beforeEach(() => {
     vi.clearAllMocks();
+    // Restore default mock values after clearing
+    mockFoundryClient.agents.messages.create.mockResolvedValue({});
+    mockFoundryClient.agents.messages.list.mockReturnValue(createAsyncIterable(defaultMessages));
+    mockFoundryClient.agents.runs.create.mockResolvedValue({
+      id: "run-1",
+      status: "completed",
+      createdAt: new Date(0),
+    });
+    mockFoundryClient.agents.runs.get.mockResolvedValue({ id: "run-1", status: "completed" });
+    mockFoundryClient.agents.runs.submitToolOutputs.mockResolvedValue({ id: "run-1", status: "completed" });
+    mockCreateThread.mockResolvedValue("thread-123");
+    mockExecuteToolCall.mockResolvedValue('{"result":"ok"}');
   });
 
   test("returns 400 when prompt is missing", async () => {
@@ -107,21 +153,24 @@ describe("handleAgUiStream", () => {
     });
     await handleAgUiStream(req, res);
     expect(mockCreateThread).not.toHaveBeenCalled();
-    expect(mockFoundryClient.agents.createMessage).toHaveBeenCalledWith(
+    expect(mockFoundryClient.agents.messages.create).toHaveBeenCalledWith(
       "existing-thread",
-      expect.objectContaining({ role: "user", content: "test" }),
+      "user",
+      "test",
     );
   });
 
   test("handles requires_action status with tool calls", async () => {
-    mockFoundryClient.agents.createRun.mockResolvedValueOnce({
+    mockFoundryClient.agents.runs.create.mockResolvedValueOnce({
       id: "run-tool",
       status: "requires_action",
       requiredAction: {
+        type: "submit_tool_outputs",
         submitToolOutputs: {
           toolCalls: [
             {
               id: "tc-1",
+              type: "function",
               function: {
                 name: "navigate_page",
                 arguments: '{"url":"https://example.com"}',
@@ -131,19 +180,19 @@ describe("handleAgUiStream", () => {
         },
       },
     });
-    mockFoundryClient.agents.submitToolOutputsToRun.mockResolvedValueOnce({
+    mockFoundryClient.agents.runs.submitToolOutputs.mockResolvedValueOnce({
       id: "run-tool",
       status: "completed",
     });
-    mockFoundryClient.agents.listMessages.mockResolvedValueOnce({
-      data: [
+    mockFoundryClient.agents.messages.list.mockReturnValueOnce(
+      createAsyncIterable([
         {
           role: "assistant",
           createdAt: new Date(0),
           content: [{ type: "text", text: { value: "Done!" } }],
         },
-      ],
-    });
+      ]),
+    );
 
     const { req, res } = createMockReqRes({
       prompt: "go to example.com",
@@ -160,21 +209,23 @@ describe("handleAgUiStream", () => {
   });
 
   test("handles tool call with invalid JSON arguments", async () => {
-    mockFoundryClient.agents.createRun.mockResolvedValueOnce({
+    mockFoundryClient.agents.runs.create.mockResolvedValueOnce({
       id: "run-bad",
       status: "requires_action",
       requiredAction: {
+        type: "submit_tool_outputs",
         submitToolOutputs: {
           toolCalls: [
             {
               id: "tc-bad",
+              type: "function",
               function: { name: "navigate_page", arguments: "not-json" },
             },
           ],
         },
       },
     });
-    mockFoundryClient.agents.submitToolOutputsToRun.mockResolvedValueOnce({
+    mockFoundryClient.agents.runs.submitToolOutputs.mockResolvedValueOnce({
       id: "run-bad",
       status: "completed",
     });
@@ -200,11 +251,11 @@ describe("handleAgUiStream", () => {
 
   test("handles polling with in_progress status", async () => {
     let callCount = 0;
-    mockFoundryClient.agents.createRun.mockResolvedValueOnce({
+    mockFoundryClient.agents.runs.create.mockResolvedValueOnce({
       id: "run-poll",
       status: "in_progress",
     });
-    mockFoundryClient.agents.getRun.mockImplementation(async () => {
+    mockFoundryClient.agents.runs.get.mockImplementation(async () => {
       callCount++;
       if (callCount >= 2) {
         return { id: "run-poll", status: "completed" };
@@ -214,12 +265,12 @@ describe("handleAgUiStream", () => {
 
     const { req, res } = createMockReqRes({ prompt: "test" });
     await handleAgUiStream(req, res);
-    expect(mockFoundryClient.agents.getRun).toHaveBeenCalled();
+    expect(mockFoundryClient.agents.runs.get).toHaveBeenCalled();
     expect(res.end).toHaveBeenCalled();
   });
 
   test("handles error during streaming", async () => {
-    mockFoundryClient.agents.createRun.mockRejectedValueOnce(
+    mockFoundryClient.agents.runs.create.mockRejectedValueOnce(
       new Error("Azure service unavailable"),
     );
 
@@ -240,11 +291,11 @@ describe("handleAgUiStream", () => {
   });
 
   test("handles queued status", async () => {
-    mockFoundryClient.agents.createRun.mockResolvedValueOnce({
+    mockFoundryClient.agents.runs.create.mockResolvedValueOnce({
       id: "run-q",
       status: "queued",
     });
-    mockFoundryClient.agents.getRun.mockResolvedValueOnce({
+    mockFoundryClient.agents.runs.get.mockResolvedValueOnce({
       id: "run-q",
       status: "completed",
     });
