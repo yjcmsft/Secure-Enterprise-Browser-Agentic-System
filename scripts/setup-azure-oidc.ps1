@@ -102,8 +102,13 @@ Write-Host "  App (client) ID: $AppId" -ForegroundColor Green
 # -- Step 2: Create Service Principal --
 
 Write-Host "Step 2: Creating Service Principal..." -ForegroundColor Yellow
-az ad sp create --id $AppId 2>$null | Out-Null
-Write-Host "  Service Principal created." -ForegroundColor Green
+$spExists = az ad sp show --id $AppId --query id --output tsv 2>$null
+if ($spExists) {
+    Write-Host "  Service Principal already exists, skipping." -ForegroundColor Green
+} else {
+    az ad sp create --id $AppId --only-show-errors | Out-Null
+    Write-Host "  Service Principal created." -ForegroundColor Green
+}
 
 # -- Step 3: Assign role on subscription --
 
