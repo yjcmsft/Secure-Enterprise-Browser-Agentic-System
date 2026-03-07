@@ -8,6 +8,24 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## 2026-03-06
 
+### AG-UI Local Demo Mode & Task Planner Improvements
+- Added **AG-UI local demo mode** in **`src/agui-handler.ts`** — when Azure AI Foundry Agent Service is unavailable, the AG-UI streaming endpoint falls back to local execution using `TaskPlanner` + `ToolRouter`. Streams full AG-UI SSE events (`RUN_STARTED` → `TOOL_CALL_START/ARGS/END` → `TEXT_MESSAGE_START/CONTENT/END` → `STATE_SNAPSHOT` → `RUN_FINISHED`) with **real skill execution** (Playwright browser automation, security gates, etc.).
+- Added **`.env` file loading** in **`src/config.ts`** via `loadDotEnv()` — reads `.env` into `process.env` at startup without external dependencies. Real env vars take precedence. Skipped during test runs (`NODE_ENV=test` or `VITEST` set) to preserve test isolation.
+- Added **`GET /demo`** route in **`src/index.ts`** — serves `frontend/index.html` from the Express server at `http://localhost:3000/demo` (same-origin eliminates CORS issues for SSE error body reading). Added "Open Interactive Demo UI" link button on the landing page.
+- Improved **`TaskPlanner.createPlanFromKeywords()`**:
+  - URL extraction now matches multi-segment domains (e.g., `learn.microsoft.com`, `data.sec.gov`) via `(?:[a-z0-9-]+\.)+(?:com|org|net|gov|...)` regex.
+  - Detects `extract`, `title`, `content`, `text` keywords and sets appropriate extraction mode.
+  - Auto-prepends `navigate_page` when `extract_content` is requested with a URL but no explicit navigate keyword.
+  - Passes URL to `extract_content` params so it can create a browser session directly.
+- Updated **frontend** (`frontend/index.html`):
+  - Added **Workflow** button (`orchestrate_workflow`) with custom prompt input.
+  - Added **AG-UI Stream** button with live SSE event rendering.
+  - Color-coded SSE event display: run (blue), text (green), tool calls (amber), state (purple), errors (red).
+  - Improved workflow result display with per-step pass/fail indicators, path badges, and duration.
+  - Clear 503 error display when Foundry is not configured, with guidance to use Workflow instead.
+  - Smart chat routing: `stream: ...` or `ag-ui: ...` prefix routes to AG-UI streaming.
+- Updated **`tests/unit/agui-handler-full.test.ts`** — test now expects local demo mode (SSE 200 stream) instead of 503 when Foundry is unavailable.
+
 ### SEC EDGAR Bot-Detection Fallback (Dual-Path in Action)
 - Added **`src/api/bot-detector.ts`** — detects bot-detection/CAPTCHA pages from SEC EDGAR, Cloudflare, reCAPTCHA, hCaptcha, and generic blocks. Returns structured `BotDetectionResult` with provider, reason, and suggested fallback path. Includes helpers: `isSecEdgarUrl()`, `extractCikFromUrl()`, `extractTickerFromUrl()`.
 - Added **`src/api/sec-edgar-connector.ts`** — full SEC EDGAR XBRL API connector (`data.sec.gov`). Endpoints: `getCompanyFacts()`, `getCompanyConcept()`, `getSubmissions()`, `searchFilings()`, and high-level `extractFinancialSummary()`. Includes 15 pre-mapped ticker→CIK entries (AAPL, MSFT, GOOGL, AMZN, META, TSLA, NVDA, etc.) and 10 common XBRL financial concepts (Revenue, Net Income, Total Assets, EPS, etc.). SEC-compliant User-Agent header per fair access policy. Retry with backoff for 429/5xx.

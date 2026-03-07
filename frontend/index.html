@@ -72,6 +72,22 @@
   .path-dom { background: #1e3a5f; color: #38bdf8; }
   .fin-filings { font-size: .75rem; color: #94a3b8; margin-top: 4px; }
   .fin-bot { font-size: .75rem; color: #fbbf24; margin-top: 4px; }
+
+  /* AG-UI streaming */
+  .sse-events { font-size: .78rem; margin-top: 6px; }
+  .sse-event { padding: 4px 8px; margin-bottom: 3px; border-radius: 4px; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: .75rem; }
+  .sse-run { background: #1e3a5f; color: #38bdf8; }
+  .sse-text { background: #14532d; color: #4ade80; }
+  .sse-tool { background: #422006; color: #fbbf24; }
+  .sse-state { background: #312e81; color: #a5b4fc; }
+  .sse-error { background: #450a0a; color: #fca5a5; }
+
+  /* Workflow steps */
+  .wf-steps { margin-top: 6px; }
+  .wf-step { padding: 4px 10px; margin-bottom: 3px; border-left: 3px solid #334155; font-size: .8rem; }
+  .wf-step-ok { border-left-color: #4ade80; }
+  .wf-step-fail { border-left-color: #f87171; }
+  .wf-step .wf-num { color: #94a3b8; font-size: .7rem; margin-right: 6px; }
 </style>
 </head>
 <body>
@@ -93,7 +109,9 @@
         &bull; Navigate to learn.microsoft.com<br>
         &bull; Extract content from learn.microsoft.com<br>
         &bull; <strong>Compare AAPL vs MSFT</strong> (SEC EDGAR XBRL API)<br>
-        &bull; <strong>Compare GOOGL vs AMZN</strong> (custom tickers)
+        &bull; <strong>Compare GOOGL vs AMZN</strong> (custom tickers)<br>
+        &bull; Navigate to learn.microsoft.com and extract the text <em>(workflow)</em><br>
+        &bull; <strong>Stream:</strong> Extract the title from learn.microsoft.com <em>(AG-UI SSE)</em>
       </div>
     </div>
     <div class="chat-input">
@@ -128,10 +146,19 @@
       <div class="skill-name">&#128274; Security Test</div>
       <div class="skill-desc">Try blocked URL (should fail)</div>
     </div>
+    <div class="skill-btn" onclick="runWorkflowPrompt()">
+      <div class="skill-name">&#128260; orchestrate_workflow</div>
+      <div class="skill-desc">Multi-step workflow (plan + execute)</div>
+    </div>
+    <div class="skill-btn" onclick="runAguiStream()">
+      <div class="skill-name">&#128225; AG-UI Stream</div>
+      <div class="skill-desc">Real-time SSE streaming (CopilotKit-compatible)</div>
+    </div>
     
     <div class="quick-links">
       <h2>&#9889; Quick Actions</h2>
       <div class="quick-link" onclick="runWorkflow('Navigate to learn.microsoft.com and extract the text')">Workflow: Navigate + Extract</div>
+      <div class="quick-link" onclick="runAguiStreamWithPrompt('Extract the title from learn.microsoft.com')">&#128225; AG-UI: Extract title (SSE)</div>
       <div class="quick-link" onclick="runSecCompare()">&#128200; SEC: Compare AAPL vs MSFT</div>
       <div class="quick-link" onclick="runSecCustom()">&#128200; SEC: Custom Ticker Compare</div>
       <div class="quick-link" onclick="checkHealth()">Health Check</div>
@@ -393,18 +420,196 @@ async function runWorkflow(prompt) {
     const elapsed = Date.now() - start;
     
     // Show plan
-    if (data.plan) {
+    if (data.plan && data.plan.steps) {
       const steps = data.plan.steps.map((s, i) => `${i+1}. ${s.skill}(${JSON.stringify(s.params)})`).join('\n');
-      addMessage('agent', 'Plan', `<pre>${escapeHtml(steps)}</pre>`);
+      addMessage('system', 'Plan', `<pre>${escapeHtml(steps)}</pre>`);
     }
     
-    // Show result
-    addJsonMessage(data.result?.success ? 'agent' : 'error', 'Result', data.result || data, elapsed);
+    // Show results per step if available
+    if (data.result && data.result.data && data.result.data.results) {
+      let html = '<div class="wf-steps">';
+      data.result.data.results.forEach((r, i) => {
+        const ok = r.success !== false;
+        html += `<div class="wf-step ${ok ? 'wf-step-ok' : 'wf-step-fail'}">`;
+        html += `<span class="wf-num">Step ${i+1}</span> `;
+        html += `<strong>${escapeHtml(r.skill || 'unknown')}</strong> `;
+        html += ok ? '\u2705' : '\u274c';
+        if (r.path) html += ` <span class="fin-path ${r.path === 'api' ? 'path-api' : 'path-dom'}">${r.path}</span>`;
+        if (r.durationMs) html += ` <span style="color:#64748b;font-size:.7rem">${r.durationMs}ms</span>`;
+        html += '</div>';
+      });
+      html += '</div>';
+      addMessage(data.result.success ? 'agent' : 'error', `Workflow ${data.result.success ? '\u2705' : '\u274c'}`, html, `${elapsed}ms`);
+      
+      // Show extracted data from last successful step
+      const lastOk = [...(data.result.data.results || [])].reverse().find(r => r.success && r.data);
+      if (lastOk && lastOk.data) {
+        addJsonMessage('agent', `Result: ${lastOk.skill}`, lastOk.data);
+      }
+    } else {
+      addJsonMessage(data.result?.success ? 'agent' : 'error', 'Result', data.result || data, elapsed);
+    }
     updateStatus(`Workflow completed in ${elapsed}ms`);
   } catch (e) {
     addMessage('error', 'Error', e.message);
   }
   setLoading(false);
+}
+
+function runWorkflowPrompt() {
+  const p = prompt('Enter workflow prompt:', 'Navigate to learn.microsoft.com and extract the text');
+  if (p) runWorkflow(p);
+}
+
+// AG-UI SSE Streaming
+async function runAguiStreamWithPrompt(streamPrompt) {
+  addMessage('user', 'You', `<strong>AG-UI Stream:</strong> ${escapeHtml(streamPrompt)}`);
+  setLoading(true);
+  updateStatus('AG-UI streaming...');
+
+  const start = Date.now();
+  let textContent = '';
+  let eventCount = 0;
+  const liveId = 'sse-live-' + Date.now();
+  const msgDiv = document.createElement('div');
+  msgDiv.className = 'msg msg-agent';
+  msgDiv.innerHTML = `<div class="label">AG-UI Stream &#128225;</div><div class="sse-events" id="${liveId}"></div>`;
+  messagesEl.appendChild(msgDiv);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+  const liveEl = document.getElementById(liveId);
+
+  try {
+    const res = await fetch(`${API}/api/agui/stream`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        prompt: streamPrompt,
+        userId: 'demo-user',
+        sessionId: SESSION_ID
+      })
+    });
+
+    // Handle non-OK responses (503 = Foundry not configured, 400 = bad request)
+    if (!res.ok) {
+      let errMsg = '';
+      try {
+        const ct = res.headers.get('content-type') || '';
+        if (ct.includes('json')) {
+          const errBody = await res.json();
+          errMsg = errBody.error || errBody.message || '';
+        } else {
+          errMsg = await res.text();
+        }
+      } catch { errMsg = ''; }
+
+      errMsg = errMsg || res.statusText || ('HTTP ' + res.status);
+      const elapsed = Date.now() - start;
+
+      let errorHtml = `<div class="sse-event sse-error">&#10060; <strong>${res.status}</strong>: ${escapeHtml(errMsg)}</div>`;
+
+      if (res.status === 503) {
+        errorHtml += '<div class="sse-event sse-error" style="margin-top:6px">'
+          + '<strong>AG-UI streaming requires Azure AI Foundry.</strong><br>'
+          + 'Set <code style="background:#1e293b;padding:2px 6px;border-radius:3px">AZURE_AI_PROJECT_ENDPOINT</code> in your <code style="background:#1e293b;padding:2px 6px;border-radius:3px">.env</code> file to enable it.<br><br>'
+          + '&#128073; Meanwhile, use the <strong>Workflow</strong> button to test multi-step operations without Foundry.'
+          + '</div>';
+      } else if (res.status === 400) {
+        errorHtml += '<div class="sse-event sse-error">Check that the prompt is not empty.</div>';
+      }
+
+      liveEl.innerHTML = errorHtml;
+      updateStatus(`AG-UI stream error: ${res.status} (${elapsed}ms)`);
+      setLoading(false);
+      return;
+    }
+
+    // Success — read SSE event stream
+    liveEl.innerHTML = '<div class="sse-event sse-run">&#128268; Connected to SSE stream...</div>';
+
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+
+      // Parse SSE events from buffer
+      const lines = buffer.split('\n');
+      buffer = lines.pop() || '';
+
+      for (const line of lines) {
+        if (line.startsWith('data: ')) {
+          try {
+            const evt = JSON.parse(line.slice(6));
+            eventCount++;
+            const evtType = evt.type || 'unknown';
+
+            let cssClass = 'sse-run';
+            let display = '';
+
+            if (evtType.includes('TEXT_MESSAGE_CONTENT')) {
+              cssClass = 'sse-text';
+              textContent += evt.delta || '';
+              display = `\u270d\ufe0f ${escapeHtml(evt.delta || '')}`;
+            } else if (evtType.includes('TEXT_MESSAGE_START')) {
+              cssClass = 'sse-text';
+              display = `\u{1F4AC} Message start (role: ${evt.role || 'assistant'})`;
+            } else if (evtType.includes('TEXT_MESSAGE_END')) {
+              cssClass = 'sse-text';
+              display = '\u{1F4AC} Message end';
+            } else if (evtType.includes('TOOL_CALL_START')) {
+              cssClass = 'sse-tool';
+              display = `\u{1F527} Tool: ${escapeHtml(evt.toolCallName || evt.name || '?')}`;
+            } else if (evtType.includes('TOOL_CALL_ARGS')) {
+              cssClass = 'sse-tool';
+              display = `\u{1F527} Args: ${escapeHtml((evt.delta || '').slice(0, 100))}`;
+            } else if (evtType.includes('TOOL_CALL_END')) {
+              cssClass = 'sse-tool';
+              display = `\u2705 Tool done`;
+            } else if (evtType.includes('STATE_SNAPSHOT') || evtType.includes('STATE_DELTA')) {
+              cssClass = 'sse-state';
+              display = `\u{1F4CA} State: ${escapeHtml(JSON.stringify(evt.snapshot || evt.delta || {}).slice(0, 120))}`;
+            } else if (evtType.includes('RUN_STARTED')) {
+              display = `\u{1F680} Run started (id: ${(evt.runId || '').slice(0, 8)}...)`;
+            } else if (evtType.includes('RUN_FINISHED')) {
+              display = '\u{1F3C1} Run finished';
+            } else if (evtType.includes('RUN_ERROR')) {
+              cssClass = 'sse-error';
+              display = `\u274c Error: ${escapeHtml(evt.message || evt.error || 'Unknown')}`;
+            } else {
+              display = `${evtType}`;
+            }
+
+            liveEl.innerHTML += `<div class="sse-event ${cssClass}">${display}</div>`;
+            messagesEl.scrollTop = messagesEl.scrollHeight;
+          } catch { /* skip non-JSON lines */ }
+        }
+      }
+    }
+
+    const elapsed = Date.now() - start;
+    liveEl.innerHTML += `<div style="font-size:.7rem;color:#64748b;margin-top:6px">${eventCount} events · ${elapsed}ms</div>`;
+
+    // Show accumulated text content
+    if (textContent) {
+      addMessage('agent', 'AG-UI Response', `<pre>${escapeHtml(textContent)}</pre>`, `${elapsed}ms`);
+    }
+    updateStatus(`AG-UI stream completed: ${eventCount} events in ${elapsed}ms`);
+
+  } catch (e) {
+    const elapsed = Date.now() - start;
+    liveEl.innerHTML += `<div class="sse-event sse-error">&#10060; Connection failed: ${escapeHtml(e.message)}</div>`;
+    liveEl.innerHTML += '<div class="sse-event sse-error">Is the server running at localhost:3000?</div>';
+    updateStatus(`AG-UI stream failed (${elapsed}ms)`);
+  }
+  setLoading(false);
+}
+
+function runAguiStream() {
+  const p = prompt('Enter prompt for AG-UI stream:', 'Extract the title from learn.microsoft.com');
+  if (p) runAguiStreamWithPrompt(p);
 }
 
 async function handleSend() {
@@ -449,6 +654,9 @@ async function handleSend() {
     await checkHealth();
   } else if (lower === 'ready') {
     await checkReady();
+  } else if (lower.startsWith('stream') || lower.startsWith('ag-ui')) {
+    const streamPrompt = text.replace(/^(stream|ag-ui)[:\s]*/i, '').trim() || 'Extract the title from learn.microsoft.com';
+    await runAguiStreamWithPrompt(streamPrompt);
   } else {
     // Default: treat as workflow
     await runWorkflow(text);

@@ -1,6 +1,7 @@
 import express from "express";
 import rateLimit from "express-rate-limit";
 import { randomUUID } from "node:crypto";
+import { resolve } from "node:path";
 import { createLogger, format, transports } from "winston";
 import { handleAgUiStream, getSessionState } from "./agui-handler.js";
 import { config } from "./config.js";
@@ -55,6 +56,11 @@ function resolveRequestId(req: express.Request, res: express.Response): string {
   return requestId;
 }
 
+// Serve the interactive demo UI at /demo (same-origin avoids CORS issues)
+app.get("/demo", (_req, res) => {
+  res.sendFile(resolve(process.cwd(), "frontend", "index.html"));
+});
+
 app.get("/", (_req, res) => {
   res.send(`<!DOCTYPE html>
 <html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -103,6 +109,8 @@ app.get("/", (_req, res) => {
   </table>
 
   <div class="footer">
+    <a href="/demo" style="display:inline-block;padding:10px 24px;background:#2563eb;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;margin-bottom:12px">&#127760; Open Interactive Demo UI</a>
+    <br>
     Powered by Azure AI Foundry &bull; AG-UI Protocol &bull; Playwright &bull; Express
     <br><a href="https://github.com/yjcmsft/Secure-Enterprise-Browser-Agentic-System">GitHub Repository</a>
   </div>
@@ -247,8 +255,12 @@ async function startAgent(): Promise<void> {
       await startFoundryAgent();
       logger.info("Azure AI Foundry agent started successfully");
     } catch (err) {
+      const error = err as Error & { statusCode?: number; code?: string; details?: unknown };
       logger.warn("Foundry agent start skipped (will use REST API only)", {
-        error: (err as Error).message,
+        error: error.message ?? String(err),
+        code: error.code,
+        statusCode: error.statusCode,
+        stack: error.stack?.split("\n").slice(0, 3).join(" | "),
       });
     }
   }

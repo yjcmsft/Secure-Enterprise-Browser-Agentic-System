@@ -15,11 +15,11 @@ An **Azure AI Foundry Agent** that securely navigates, reads, and acts across en
 
 ## 🎥 Demo: Operation Skyfall
 
-*The CEO needs a competitive revenue comparison, P1 incident status, and a new VP onboarded — before the 8 AM board meeting.*
+*The CEO needs a competitive revenue comparison, P1 incident status, and a stakeholder brief — before the 8 AM board meeting.*
 
 ```
  👤 "Compare GOOGL/AMZN/AAPL revenue, check ServiceNow P1s,
-     onboard Sarah Chen as VP Eng, send exec brief via Teams."
+     analyze team work patterns, send exec brief via Teams."
      │
      ▼
  🤖 Browser Agent ── 12 skills, 3 parallel workstreams ──────────
@@ -31,12 +31,13 @@ An **Azure AI Foundry Agent** that securely navigates, reads, and acts across en
  ├─ 🚨 Workstream 2: Incident Status
  │  navigate_page → ServiceNow → extract_content → Grafana dashboard
  │
- └─ 👩‍💼 Workstream 3: HR Onboarding (⚠️ approval required)
-    fill_form → Workday │ fill_form → Jira │ send_teams_message
+ └─ 📡 Workstream 3: Stakeholder Brief (AG-UI streamed)
+    analyze_work_patterns → create_adaptive_card → send_teams_message
      │
      ▼
  ✅ Executive brief delivered via Teams in 2m 47s
     (all outputs screened by Azure AI Content Safety)
+    (AG-UI events streamed to frontend in real-time)
 ```
 
 **Before:** 3 people · 7 apps · 4+ hours → **After:** 1 prompt · 12 apps · **3 minutes** ⚡
@@ -102,7 +103,7 @@ Enterprise Tenant (Azure Entra ID)
 | �️ | **Bot-Detection Fallback** | Auto-detects SEC EDGAR / Cloudflare / CAPTCHA blocks → falls back to structured APIs |
 | �🔒 | **Zero Trust Security** | 5-layer pipeline: Entra ID → URL allowlist → Content Safety → approval → audit |
 | 🤖 | **12 Agent Skills** | Navigate, extract, fill, submit, compare, workflow + Teams, Calendar, Cards |
-| 📡 | **AG-UI Streaming** | Real-time SSE → CopilotKit or any AG-UI frontend |
+| 📡 | **AG-UI Streaming** | Real-time SSE → CopilotKit or any AG-UI frontend · local demo mode without Foundry |
 | ☁️ | **Azure AI Foundry** | Function tools + persistent threads + governance |
 | 📊 | **Fabric + Work IQ** | Lakehouse analytics + productivity metrics ("saved 4 hours") |
 | 🎛️ | **13 Feature Flags** | Fine-grained runtime control per security, browser, analytics, and agent features |
@@ -125,6 +126,8 @@ az login && azd up                # provisions + deploys everything
 npm start                         # http://localhost:3000
 ```
 
+> **Note:** The server auto-loads `.env` at startup — no `dotenv` dependency needed. Real environment variables take precedence over `.env` values.
+
 | Command | Description |
 |---|---|
 | `npm run dev` | Dev server with hot reload |
@@ -136,6 +139,8 @@ npm start                         # http://localhost:3000
 ---
 
 ## 🖥️ Try It Locally
+
+**Interactive Demo UI:** Open [http://localhost:3000/demo](http://localhost:3000/demo) for the full chat UI with skills panel, workflow execution, and AG-UI streaming.
 
 ```bash
 # Health check
@@ -162,6 +167,7 @@ curl -X POST http://localhost:3000/api/workflow \
   -d '{"userId":"demo","sessionId":"s1","prompt":"Navigate to learn.microsoft.com and extract the text"}'
 
 # AG-UI streaming (CopilotKit-compatible SSE)
+# Works in local demo mode without Azure AI Foundry — executes skills locally
 curl -X POST http://localhost:3000/api/agui/stream \
   -H "Content-Type: application/json" \
   -d '{"prompt":"Extract the title from learn.microsoft.com","userId":"demo","sessionId":"s1"}'

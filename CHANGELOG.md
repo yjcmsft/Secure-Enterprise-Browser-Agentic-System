@@ -4,6 +4,19 @@ All notable changes to this project are documented in this file.
 
 ## 2026-03-06
 
+### AG-UI Local Demo Mode & Task Planner Improvements
+- Added **AG-UI local demo mode** in `src/agui-handler.ts` — when Azure AI Foundry Agent Service is unavailable, the AG-UI streaming endpoint falls back to local execution using `TaskPlanner` + `ToolRouter`, streaming full AG-UI SSE events (`RUN_STARTED` → `TOOL_CALL_*` → `TEXT_MESSAGE_*` → `STATE_SNAPSHOT` → `RUN_FINISHED`) with real skill execution.
+- Added `.env` file loading in `src/config.ts` via `loadDotEnv()` — reads `.env` into `process.env` at startup without external dependencies. Skipped during test runs (`NODE_ENV=test`) to preserve test isolation.
+- Added `GET /demo` route in `src/index.ts` — serves `frontend/index.html` from the Express server at `http://localhost:3000/demo` (same-origin, avoids CORS issues for SSE error handling).
+- Added "Open Interactive Demo UI" link button on the landing page.
+- Improved `TaskPlanner.createPlanFromKeywords()` URL extraction:
+  - Now matches multi-segment domains (e.g., `learn.microsoft.com` not just `microsoft.com`).
+  - Detects `extract`, `title`, `content`, `text` keywords for extraction mode.
+  - Auto-prepends `navigate_page` when `extract_content` is requested with a URL but no explicit navigate keyword.
+  - Passes URL to `extract_content` params so it can create a browser session.
+- Updated **frontend** with Workflow and AG-UI Stream buttons, SSE event rendering with color-coded event types, and improved error display for 503/400 responses.
+- Updated `tests/unit/agui-handler-full.test.ts` — test now expects local demo mode (SSE stream) instead of 503 when Foundry is unavailable.
+
 ### SEC EDGAR Bot-Detection Fallback (Dual-Path in Action)
 - Added `src/api/bot-detector.ts` — detects bot-detection/CAPTCHA pages from SEC EDGAR, Cloudflare, reCAPTCHA, hCaptcha, and generic blocks. Returns structured `BotDetectionResult` with provider, reason, and suggested fallback path. Includes helpers: `isSecEdgarUrl()`, `extractCikFromUrl()`, `extractTickerFromUrl()`.
 - Added `src/api/sec-edgar-connector.ts` — full SEC EDGAR XBRL API connector (`data.sec.gov`). Endpoints: `getCompanyFacts()`, `getCompanyConcept()`, `getSubmissions()`, `searchFilings()`, and high-level `extractFinancialSummary()`. Includes 15 pre-mapped ticker→CIK entries and 10 common XBRL financial concepts (Revenue, Net Income, Total Assets, etc.). SEC-compliant User-Agent header per fair access policy.

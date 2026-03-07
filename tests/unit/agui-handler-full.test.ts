@@ -115,13 +115,18 @@ describe("handleAgUiStream", () => {
     expect(res.json).toHaveBeenCalledWith({ error: "prompt is required" });
   });
 
-  test("returns 503 when foundry agent not started", async () => {
+  test("falls back to local demo mode when foundry agent not started", async () => {
     const { getFoundryAgent } = await import("../../src/foundry-agent.js");
     vi.mocked(getFoundryAgent).mockReturnValueOnce(null);
 
     const { req, res } = createMockReqRes({ prompt: "hello" });
     await handleAgUiStream(req, res);
-    expect(res.status).toHaveBeenCalledWith(503);
+    // Local demo mode streams SSE events instead of returning 503
+    expect(res.writeHead).toHaveBeenCalledWith(200, expect.objectContaining({
+      "Content-Type": "text/event-stream",
+    }));
+    expect(res.write).toHaveBeenCalled();
+    expect(res.end).toHaveBeenCalled();
   });
 
   test("streams SSE events for a simple prompt", async () => {

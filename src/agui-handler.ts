@@ -27,6 +27,8 @@ import type {
 } from "@azure/ai-agents";
 import { createLogger, format, transports } from "winston";
 import { executeToolCall, getFoundryAgent, createThread } from "./foundry-agent.js";
+import { TaskPlanner } from "./orchestrator/task-planner.js";
+import { ToolRouter } from "./orchestrator/tool-router.js";
 import type { SkillExecutionContext } from "./types/skills.js";
 
 const logger = createLogger({
@@ -76,7 +78,8 @@ export async function handleAgUiStream(req: Request, res: Response): Promise<voi
 
   const foundry = getFoundryAgent();
   if (!foundry) {
-    res.status(503).json({ error: "Foundry agent not started" });
+    // Foundry not available — run in local demo mode with real skill execution
+    await handleLocalDemoStream(req, res, prompt, userId, sessionId, clientState);
     return;
   }
 
@@ -253,6 +256,128 @@ export async function handleAgUiStream(req: Request, res: Response): Promise<voi
       runId,
       message: errorMessage,
     });
+  } finally {
+    res.end();
+  }
+}
+
+/**
+ * Local demo mode — streams AG-UI events using the local task planner and
+ * tool router when Azure AI Foundry Agent Service is not available.
+ *
+ * This gives the full SSE streaming experience (RUN_STARTED → TOOL_CALL_* →
+ * TEXT_MESSAGE_* → STATE_SNAPSHOT → RUN_FINISHED) without requiring Foundry.
+ */
+async function handleLocalDemoStream(
+  _req: Request,
+  res: Response,
+  prompt: string,
+  userId: string,
+  sessionId: string,
+  clientState?: Record<string, unknown>,
+): Promise<void> {
+  // SSE setup
+  res.writeHead(200, {
+    "Content-Type": "text/event-stream",
+    "Cache-Control": "no-cache",
+    Connection: "keep-alive",
+    "X-Accel-Buffering": "no",
+  });
+
+  const encoder = new EventEncoder();
+  const runId = randomUUID();
+  const messageId = randomUUID();
+
+  function emit(event: { type: EventType; [key: string]: unknown }): void {
+    const encoded = encoder.encode(event as Parameters<EventEncoder["encode"]>[0]);
+    res.write(encoded);
+  }
+
+  if (clientState) {
+    const existing = sessionStates.get(sessionId) ?? {};
+    sessionStates.set(sessionId, { ...existing, ...clientState } as AgentState);
+  }
+
+  const planner = new TaskPlanner();
+  const toolRouter = new ToolRouter();
+
+  try {
+    // RUN_STARTED
+    emit({ type: EventType.RUN_STARTED, runId, threadId: sessionId });
+
+    // STATE_SNAPSHOT: mode = local
+    const agentState: AgentState = sessionStates.get(sessionId) ?? {};
+    sessionStates.set(sessionId, agentState);
+    emit({ type: EventType.STATE_SNAPSHOT, snapshot: { ...agentState, mode: "local-demo" } });
+
+    // Plan the workflow
+    const plan = await planner.createPlan(prompt);
+    const context: SkillExecutionContext = { userId, sessionId, requestId: runId };
+
+    // TEXT_MESSAGE_START
+    emit({ type: EventType.TEXT_MESSAGE_START, messageId, role: "assistant" });
+
+    // Emit planning info as text
+    const planSummary = plan.steps.map((s) => `${s.skill}(${JSON.stringify(s.params)})`).join(" → ");
+    emit({ type: EventType.TEXT_MESSAGE_CONTENT, messageId, delta: `[Local Demo] Plan: ${planSummary}\n\n` });
+
+    // Execute each step with full tool call events
+    const results: Array<{ skill: string; success: boolean; data?: unknown }> = [];
+    for (const step of plan.steps) {
+      const toolCallId = randomUUID();
+
+      // TOOL_CALL_START
+      emit({ type: EventType.TOOL_CALL_START, toolCallId, toolCallName: step.skill });
+
+      // TOOL_CALL_ARGS
+      emit({ type: EventType.TOOL_CALL_ARGS, toolCallId, delta: JSON.stringify(step.params) });
+
+      // Execute skill
+      const result = await toolRouter.run(step.skill, step.params, context);
+      results.push({ skill: step.skill, success: result.success, data: result.data });
+
+      // Update state
+      agentState.lastSkill = step.skill;
+      sessionStates.set(sessionId, agentState);
+
+      // TOOL_CALL_END
+      emit({ type: EventType.TOOL_CALL_END, toolCallId, result: JSON.stringify(result) });
+
+      // STATE_SNAPSHOT
+      emit({ type: EventType.STATE_SNAPSHOT, snapshot: { ...agentState } });
+
+      // Stream result as text
+      const status = result.success ? "✅" : "❌";
+      emit({
+        type: EventType.TEXT_MESSAGE_CONTENT,
+        messageId,
+        delta: `${status} ${step.skill}: ${result.success ? "completed" : result.error ?? "failed"} (${result.durationMs}ms, path: ${result.path ?? "n/a"})\n`,
+      });
+
+      if (!result.success) break;
+    }
+
+    // Final summary
+    const allOk = results.every((r) => r.success);
+    emit({
+      type: EventType.TEXT_MESSAGE_CONTENT,
+      messageId,
+      delta: `\n${allOk ? "✅" : "⚠️"} Workflow ${allOk ? "completed" : "partial"}: ${results.filter((r) => r.success).length}/${results.length} steps succeeded.`,
+    });
+
+    // TEXT_MESSAGE_END
+    emit({ type: EventType.TEXT_MESSAGE_END, messageId });
+
+    // Final STATE_SNAPSHOT
+    emit({ type: EventType.STATE_SNAPSHOT, snapshot: sessionStates.get(sessionId) ?? {} });
+
+    // RUN_FINISHED
+    emit({ type: EventType.RUN_FINISHED, runId });
+
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : String(error);
+    logger.error("agui-local-demo-error", { runId, error: errorMessage });
+    emit({ type: EventType.RUN_ERROR, runId, message: errorMessage });
   } finally {
     res.end();
   }

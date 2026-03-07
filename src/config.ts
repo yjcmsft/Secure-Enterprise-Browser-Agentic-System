@@ -2,6 +2,28 @@ import { z } from "zod";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 
+// Load .env file into process.env (no external dependency needed)
+// Skipped during test runs to avoid polluting test isolation
+function loadDotEnv(): void {
+  if (process.env.NODE_ENV === "test" || process.env.VITEST) return;
+  const envPath = resolve(process.cwd(), ".env");
+  if (!existsSync(envPath)) return;
+  const lines = readFileSync(envPath, "utf-8").split("\n");
+  for (const raw of lines) {
+    const line = raw.trim();
+    if (!line || line.startsWith("#")) continue;
+    const eqIndex = line.indexOf("=");
+    if (eqIndex === -1) continue;
+    const key = line.slice(0, eqIndex).trim();
+    const value = line.slice(eqIndex + 1).trim();
+    // Only set if not already defined (real env vars take precedence)
+    if (process.env[key] === undefined) {
+      process.env[key] = value;
+    }
+  }
+}
+loadDotEnv();
+
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
   PORT: z.coerce.number().default(3000),

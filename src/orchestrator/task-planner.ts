@@ -95,12 +95,30 @@ export class TaskPlanner {
   public createPlanFromKeywords(prompt: string): WorkflowPlan {
     const steps: SkillInvocation[] = [];
     const lower = prompt.toLowerCase();
+    const url = this.extractUrl(prompt);
 
-    if (lower.includes("navigate") || lower.includes("open")) {
-      steps.push({ skill: "navigate_page", params: { url: this.extractUrl(prompt) } });
+    const hasNavigate = lower.includes("navigate") || lower.includes("open") || lower.includes("go to");
+    const hasExtract = lower.includes("extract") || lower.includes("table") || lower.includes("summary")
+      || lower.includes("title") || lower.includes("content") || lower.includes("text");
+
+    if (hasNavigate) {
+      steps.push({ skill: "navigate_page", params: { url } });
     }
-    if (lower.includes("extract") || lower.includes("table") || lower.includes("summary")) {
-      steps.push({ skill: "extract_content", params: { mode: "all" } });
+    if (hasExtract) {
+      // If extract is requested but navigate wasn't, auto-add navigate_page first
+      if (!hasNavigate && url !== "https://example.com") {
+        steps.push({ skill: "navigate_page", params: { url } });
+      }
+      // Pass URL to extract_content so it can create a session if needed
+      const extractParams: Record<string, unknown> = { mode: "all" };
+      if (url !== "https://example.com") {
+        extractParams.url = url;
+      }
+      // Detect mode from prompt
+      if (lower.includes("text") || lower.includes("title")) extractParams.mode = "text";
+      if (lower.includes("table")) extractParams.mode = "table";
+      if (lower.includes("link")) extractParams.mode = "links";
+      steps.push({ skill: "extract_content", params: extractParams });
     }
     if (lower.includes("fill") || lower.includes("form")) {
       steps.push({ skill: "fill_form", params: { fields: {} } });
@@ -131,7 +149,15 @@ export class TaskPlanner {
   }
 
   private extractUrl(prompt: string): string {
-    const match = prompt.match(/https?:\/\/[^\s]+/i);
-    return match?.[0] ?? "https://example.com";
+    // Match explicit URLs first
+    const urlMatch = prompt.match(/https?:\/\/[^\s]+/i);
+    if (urlMatch) return urlMatch[0];
+
+    // Match domain-like patterns including subdomains
+    // e.g., "learn.microsoft.com", "www.sec.gov", "data.sec.gov/api/xbrl"
+    const domainMatch = prompt.match(/\b((?:[a-z0-9-]+\.)+(?:com|org|net|gov|edu|io|dev|co)(?:\/[^\s]*)?)/i);
+    if (domainMatch) return `https://${domainMatch[1]}`;
+
+    return "https://example.com";
   }
 }
