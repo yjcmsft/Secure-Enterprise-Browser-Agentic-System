@@ -1,4 +1,6 @@
 import { z } from "zod";
+import { existsSync, readFileSync } from "node:fs";
+import { resolve } from "node:path";
 
 const envSchema = z.object({
   NODE_ENV: z.enum(["development", "test", "production"]).default("development"),
@@ -32,7 +34,25 @@ export type AppConfig = z.infer<typeof envSchema> & {
 
 const parsed = envSchema.parse(process.env);
 
+/**
+ * Load URL allowlist patterns.
+ * Priority: url-allowlist.txt file > ALLOWED_URL_PATTERNS env var
+ * File format: one pattern per line, # comments, empty lines ignored.
+ */
+function loadAllowlistPatterns(): string[] {
+  const filePath = resolve(process.cwd(), "url-allowlist.txt");
+  if (existsSync(filePath)) {
+    const lines = readFileSync(filePath, "utf-8").split("\n");
+    const patterns = lines
+      .map((line) => line.trim())
+      .filter((line) => line.length > 0 && !line.startsWith("#"));
+    if (patterns.length > 0) return patterns;
+  }
+  // Fallback to env var
+  return parsed.ALLOWED_URL_PATTERNS.split(",").map((item) => item.trim());
+}
+
 export const config: AppConfig = {
   ...parsed,
-  allowlistPatterns: parsed.ALLOWED_URL_PATTERNS.split(",").map((item) => item.trim()),
+  allowlistPatterns: loadAllowlistPatterns(),
 };

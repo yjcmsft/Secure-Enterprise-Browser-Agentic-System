@@ -1,0 +1,24 @@
+# URL Allowlist — one pattern per line
+# Supports wildcards: * matches any subdomain or path segment
+# Lines starting with # are comments
+# Empty lines are ignored
+
+# Microsoft properties
+https://*.microsoft.com/*
+https://*.office.com/*
+https://*.azure.com/*
+https://*.live.com/*
+
+# Government / regulatory
+https://sec.gov/*
+https://www.sec.gov/*
+
+# Developer tools
+https://*.github.com/*
+https://*.stackoverflow.com/*
+
+# Add your enterprise apps below:
+# https://your-servicenow.service-now.com/*
+# https://your-jira.atlassian.net/*
+# https://your-workday.myworkday.com/*
+# https://grafana.your-company.com/*
