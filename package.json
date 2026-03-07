@@ -48,6 +48,7 @@
     "@azure/identity": "^4.5.0",
     "@azure/keyvault-secrets": "^4.9.0",
     "@copilotkit/runtime": "^1.9.3",
+    "@github/copilot-sdk": "^0.1.30",
     "@microsoft/microsoft-graph-client": "^3.0.7",
     "axios": "^1.7.9",
     "express": "^4.21.1",

@@ -5,6 +5,7 @@ import { resolve } from "node:path";
 import { createLogger, format, transports } from "winston";
 import { handleAgUiStream, getSessionState } from "./agui-handler.js";
 import { config } from "./config.js";
+import { startCopilotSession, stopCopilotClient } from "./copilot-sdk.js";
 import { startFoundryAgent, stopFoundryAgent } from "./foundry-agent.js";
 import { TaskPlanner } from "./orchestrator/task-planner.js";
 import { ToolRouter } from "./orchestrator/tool-router.js";
@@ -247,6 +248,35 @@ app.get("/api/agui/state/:sessionId", (req, res) => {
 });
 
 // ---------------------------------------------------------------------------
+// Copilot SDK endpoint — uses @github/copilot-sdk for agent orchestration
+// ---------------------------------------------------------------------------
+app.post("/api/copilot", async (req, res) => {
+  const requestId = resolveRequestId(req, res);
+  const { prompt, userId, sessionId } = req.body as {
+    prompt: string;
+    userId?: string;
+    sessionId?: string;
+  };
+
+  if (!prompt) {
+    res.status(400).json({ requestId, error: "prompt is required" });
+    return;
+  }
+
+  try {
+    const result = await startCopilotSession(
+      userId ?? "anonymous",
+      sessionId ?? `copilot-${Date.now()}`,
+      prompt,
+    );
+    res.status(200).json({ requestId, ...result });
+  } catch (err) {
+    const error = (err as Error).message;
+    res.status(500).json({ requestId, error });
+  }
+});
+
+// ---------------------------------------------------------------------------
 // Agent lifecycle — start Azure AI Foundry agent if configured
 // ---------------------------------------------------------------------------
 async function startAgent(): Promise<void> {
@@ -273,6 +303,7 @@ const server = app.listen(config.PORT, () => {
 
 async function shutdown(): Promise<void> {
   await stopFoundryAgent();
+  await stopCopilotClient();
   await sessionManager.closeAll();
   await runtime.browserPool.close();
   server.close(() => process.exit(0));
