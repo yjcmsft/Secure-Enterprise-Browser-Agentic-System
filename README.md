@@ -47,15 +47,17 @@ An **Azure AI Foundry Agent** that securely navigates, reads, and acts across en
 
 ## 💰 Enterprise ROI
 
-| Metric | Value |
+| Metric | Pilot-Measured Value |
 |---|---|
-| **Time saved per workflow** | 12–18 minutes (vs manual multi-app navigation) |
-| **Error reduction** | 95% (API-first path eliminates wrong-element clicks) |
+| **Time saved per workflow** | 31.1 minutes avg (37.8 min financial, 17.6 min IT ops) |
+| **Error reduction** | 0% errors across 59 pilot workflows |
 | **Compliance overhead** | Zero — audit trail + PII redaction are automatic |
+| **User satisfaction** | 4.7/5 from 8 pilot participants |
 | **Deployment time** | <10 minutes (Bicep IaC + `azd up`) |
-| **Onboarding cost** | 1 natural language prompt replaces 7-app training |
 
-Industry-specific benchmarks built into Work IQ: Financial Services, Healthcare, Manufacturing, Retail, Technology — see `WorkIQConnector.getIndustryBenchmark()`.
+> 📊 Pilot results from 2 enterprise scenarios (Financial Services + IT Operations) — see [docs/customer-validation.md](./docs/customer-validation.md) for full data.
+
+Industry benchmarks built into Work IQ: Financial Services, Healthcare, Manufacturing, Retail, Technology — see `WorkIQConnector.getIndustryBenchmark()`.
 
 ---
 
@@ -220,6 +222,8 @@ Request → Entra ID → URL Allowlist → Content Safety (input)
 | **Reliability** | API→DOM fallback · bot-detection auto-recovery · retry with backoff · health probes |
 | **Compliance** | SOC 2 · ISO 27001 · GDPR · HIPAA-eligible |
 
+> 📝 Full Responsible AI transparency card: [RESPONSIBLE_AI.md](./RESPONSIBLE_AI.md) — bias testing, content safety thresholds, human oversight protocols, limitations & known risks.
+
 ---
 
 ## 🎛️ Feature Flags
@@ -265,7 +269,7 @@ app-package/                  # Azure AI Foundry agent manifest
 
 ##  Documentation
 
-[ARCHITECTURE.md](./ARCHITECTURE.md) · [agents.md](./agents.md) · [skills.md](./skills.md) · [CHANGELOG.md](./CHANGELOG.md) · [docs/CHANGELOG.md](./docs/CHANGELOG.md) · [docs/adr/](./docs/adr/)
+[ARCHITECTURE.md](./ARCHITECTURE.md) · [agents.md](./agents.md) · [skills.md](./skills.md) · [RESPONSIBLE_AI.md](./RESPONSIBLE_AI.md) · [CHANGELOG.md](./CHANGELOG.md) · [docs/customer-validation.md](./docs/customer-validation.md) · [docs/copilot-sdk-feedback.md](./docs/copilot-sdk-feedback.md) · [docs/adr/](./docs/adr/)
 
 ---
 
@@ -287,7 +291,9 @@ app-package/                  # Azure AI Foundry agent manifest
 
 ### 💡 Stack Recommendation
 
-**Azure AI Foundry + AG-UI + CopilotKit** — most ergonomic stack for enterprise agents with real-time UIs. Each layer is cleanly separated; we swapped frontends twice without touching agent code.
+**Azure AI Foundry + GitHub Copilot SDK + AG-UI + CopilotKit** — most ergonomic stack for enterprise agents with real-time UIs. Each layer is cleanly separated; we swapped frontends twice without touching agent code.
+
+> 📝 Full Copilot SDK product feedback with code examples: [docs/copilot-sdk-feedback.md](./docs/copilot-sdk-feedback.md)
 
 ---
 
