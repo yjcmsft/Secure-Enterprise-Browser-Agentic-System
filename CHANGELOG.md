@@ -2,6 +2,30 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-03-06
+
+### SEC EDGAR Bot-Detection Fallback (Dual-Path in Action)
+- Added `src/api/bot-detector.ts` — detects bot-detection/CAPTCHA pages from SEC EDGAR, Cloudflare, reCAPTCHA, hCaptcha, and generic blocks. Returns structured `BotDetectionResult` with provider, reason, and suggested fallback path. Includes helpers: `isSecEdgarUrl()`, `extractCikFromUrl()`, `extractTickerFromUrl()`.
+- Added `src/api/sec-edgar-connector.ts` — full SEC EDGAR XBRL API connector (`data.sec.gov`). Endpoints: `getCompanyFacts()`, `getCompanyConcept()`, `getSubmissions()`, `searchFilings()`, and high-level `extractFinancialSummary()`. Includes 15 pre-mapped ticker→CIK entries and 10 common XBRL financial concepts (Revenue, Net Income, Total Assets, etc.). SEC-compliant User-Agent header per fair access policy.
+- Updated `src/skills/compare-data.ts` with two-level fallback: (1) proactive SEC EDGAR API for known SEC URLs, (2) post-extraction bot-detection scanning with automatic API fallback when challenge page detected.
+- Updated `src/api/dual-path-router.ts` — added "known API providers" registry; SEC EDGAR URLs now proactively route to the API path without schema probing.
+- Added `data.sec.gov` and `efts.sec.gov` to `url-allowlist.txt`.
+
+### Frontend UI Updates
+- Removed the "Compare Azure vs .NET docs" button and default compare routing.
+- Added SEC EDGAR compare button and "Custom Ticker Compare" quick action.
+- SEC compare results now render as formatted financial comparison tables (side-by-side company columns, auto-formatted currency values, recent filings summary, path badges, bot-detection indicators) instead of raw JSON.
+- Chat input `compare AAPL vs MSFT` auto-routes to SEC EDGAR comparison with formatted output.
+
+### Tests Added
+- `tests/unit/api/bot-detector.test.ts` — 32 tests covering all bot-detection patterns, SEC URL matching, CIK/ticker extraction.
+- `tests/unit/api/sec-edgar-connector.test.ts` — 23 tests covering CIK resolution, all API endpoints, financial summary extraction, retry logic, error handling, User-Agent headers.
+- Updated `tests/unit/api/dual-path-router.test.ts` — 3 new tests for SEC EDGAR known-provider routing.
+
+### Validation
+- **54 test files, 456 tests, all passing**
+- Typecheck clean, lint clean
+
 ## 2026-02-27
 
 ### Security Hardening

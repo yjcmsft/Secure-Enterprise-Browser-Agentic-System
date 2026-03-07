@@ -16,6 +16,8 @@ https://*.live.com/*
 # Government / regulatory
 https://sec.gov/*
 https://www.sec.gov/*
+https://data.sec.gov/*
+https://efts.sec.gov/*
 
 # Developer tools
 https://*.github.com/*

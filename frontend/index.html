@@ -57,6 +57,21 @@
   .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
   .dot-green { background: #4ade80; }
   .dot-red { background: #f87171; }
+
+  /* Financial summary tables */
+  .fin-summary { margin-top: 8px; }
+  .fin-summary h3 { font-size: .9rem; color: #38bdf8; margin-bottom: 6px; }
+  .fin-summary .entity { font-size: .75rem; color: #94a3b8; margin-bottom: 8px; }
+  .fin-table { width: 100%; border-collapse: collapse; font-size: .78rem; margin-bottom: 12px; }
+  .fin-table th { text-align: left; padding: 6px 8px; background: #1e3a5f; color: #38bdf8; border-bottom: 2px solid #334155; }
+  .fin-table td { padding: 5px 8px; border-bottom: 1px solid #1e293b; }
+  .fin-table tr:hover td { background: #1e293b; }
+  .fin-val { text-align: right; font-variant-numeric: tabular-nums; font-family: 'Cascadia Code', monospace; }
+  .fin-path { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: .7rem; font-weight: 600; margin-top: 6px; }
+  .path-api { background: #14532d; color: #4ade80; }
+  .path-dom { background: #1e3a5f; color: #38bdf8; }
+  .fin-filings { font-size: .75rem; color: #94a3b8; margin-top: 4px; }
+  .fin-bot { font-size: .75rem; color: #fbbf24; margin-top: 4px; }
 </style>
 </head>
 <body>
@@ -77,7 +92,8 @@
         <strong>Try these:</strong><br>
         &bull; Navigate to learn.microsoft.com<br>
         &bull; Extract content from learn.microsoft.com<br>
-        &bull; Compare azure and dotnet docs
+        &bull; <strong>Compare AAPL vs MSFT</strong> (SEC EDGAR XBRL API)<br>
+        &bull; <strong>Compare GOOGL vs AMZN</strong> (custom tickers)
       </div>
     </div>
     <div class="chat-input">
@@ -104,9 +120,9 @@
       <div class="skill-name">capture_screenshot</div>
       <div class="skill-desc">Screenshot a page (enter URL)</div>
     </div>
-    <div class="skill-btn" onclick="runSkill('compare_data', {urls: ['https://learn.microsoft.com/azure','https://learn.microsoft.com/dotnet'], mode: 'text'})">
-      <div class="skill-name">compare_data</div>
-      <div class="skill-desc">Compare Azure vs .NET docs</div>
+    <div class="skill-btn" onclick="runSecCompare()">
+      <div class="skill-name">compare_data (SEC)</div>
+      <div class="skill-desc">&#128200; Compare AAPL vs MSFT via SEC EDGAR XBRL API</div>
     </div>
     <div class="skill-btn" onclick="runSkill('navigate_page', {url: 'https://evil-site.com/hack'})">
       <div class="skill-name">&#128274; Security Test</div>
@@ -116,6 +132,8 @@
     <div class="quick-links">
       <h2>&#9889; Quick Actions</h2>
       <div class="quick-link" onclick="runWorkflow('Navigate to learn.microsoft.com and extract the text')">Workflow: Navigate + Extract</div>
+      <div class="quick-link" onclick="runSecCompare()">&#128200; SEC: Compare AAPL vs MSFT</div>
+      <div class="quick-link" onclick="runSecCustom()">&#128200; SEC: Custom Ticker Compare</div>
       <div class="quick-link" onclick="checkHealth()">Health Check</div>
       <div class="quick-link" onclick="checkReady()">Readiness Probe</div>
     </div>
@@ -222,6 +240,144 @@ async function runSkill(name, params) {
   setLoading(false);
 }
 
+function formatCurrency(val) {
+  if (val == null) return '—';
+  const abs = Math.abs(val);
+  if (abs >= 1e12) return (val < 0 ? '-' : '') + '$' + (abs / 1e12).toFixed(2) + 'T';
+  if (abs >= 1e9)  return (val < 0 ? '-' : '') + '$' + (abs / 1e9).toFixed(2) + 'B';
+  if (abs >= 1e6)  return (val < 0 ? '-' : '') + '$' + (abs / 1e6).toFixed(2) + 'M';
+  return '$' + val.toLocaleString();
+}
+
+function renderSecComparison(data, elapsed) {
+  const comparisons = data?.comparisons || [];
+  if (!comparisons.length || !comparisons.some(c => c.success)) {
+    addJsonMessage('error', 'compare_data ❌', data, elapsed);
+    return;
+  }
+
+  let html = '<div class="fin-summary">';
+
+  // Build side-by-side comparison table if we have SEC XBRL data
+  const secResults = comparisons.filter(c => c.success && c.extracted?.source === 'sec-edgar-xbrl');
+
+  if (secResults.length >= 2) {
+    // Multi-company comparison table
+    html += '<h3>&#128200; Financial Comparison (SEC EDGAR XBRL)</h3>';
+    html += '<table class="fin-table"><thead><tr><th>Metric</th>';
+    secResults.forEach(r => { html += `<th class="fin-val">${escapeHtml(r.extracted.entityName)}</th>`; });
+    html += '</tr></thead><tbody>';
+
+    // Collect all unique concepts across companies
+    const allConcepts = new Map();
+    secResults.forEach(r => {
+      (r.extracted.dataPoints || []).forEach(dp => {
+        if (!allConcepts.has(dp.concept)) allConcepts.set(dp.concept, dp.label);
+      });
+    });
+
+    allConcepts.forEach((label, concept) => {
+      html += `<tr><td>${escapeHtml(label)}</td>`;
+      secResults.forEach(r => {
+        const dp = (r.extracted.dataPoints || []).find(d => d.concept === concept);
+        html += `<td class="fin-val">${dp ? formatCurrency(dp.value) : '—'}</td>`;
+      });
+      html += '</tr>';
+    });
+    html += '</tbody></table>';
+
+    // Recent filings summary
+    secResults.forEach(r => {
+      const filings = (r.extracted.recentFilings || []).slice(0, 3);
+      if (filings.length) {
+        html += `<div class="fin-filings"><strong>${escapeHtml(r.extracted.entityName)}</strong> recent filings: `;
+        html += filings.map(f => `${f.form} (${f.filingDate})`).join(', ');
+        html += '</div>';
+      }
+    });
+  } else {
+    // Single or mixed results — show per-company cards
+    comparisons.forEach(c => {
+      if (!c.success) {
+        html += `<div style="color:#fca5a5">❌ ${escapeHtml(c.url)}: ${escapeHtml(c.error || 'Failed')}</div>`;
+        return;
+      }
+      const ext = c.extracted;
+      if (ext?.source === 'sec-edgar-xbrl') {
+        html += `<h3>${escapeHtml(ext.entityName)} (CIK: ${ext.cik})</h3>`;
+        html += '<table class="fin-table"><thead><tr><th>Metric</th><th class="fin-val">Value</th><th>FY</th><th>Form</th></tr></thead><tbody>';
+        (ext.dataPoints || []).forEach(dp => {
+          html += `<tr><td>${escapeHtml(dp.label)}</td><td class="fin-val">${formatCurrency(dp.value)}</td><td>${dp.fiscalYear}</td><td>${dp.form}</td></tr>`;
+        });
+        html += '</tbody></table>';
+      } else {
+        html += `<div><strong>${escapeHtml(c.url)}</strong></div>`;
+        html += `<pre>${escapeHtml(JSON.stringify(ext, null, 2).slice(0, 500))}</pre>`;
+      }
+    });
+  }
+
+  // Show path badges and bot detection info
+  comparisons.forEach(c => {
+    if (c.path) {
+      html += `<span class="fin-path ${c.path === 'api' ? 'path-api' : 'path-dom'}">${c.path === 'api' ? '📡 API Path' : '🔧 DOM Path'}</span> `;
+    }
+    if (c.botDetected) {
+      html += `<div class="fin-bot">⚠️ Bot detected: ${escapeHtml(c.botDetected.reason)} → fell back to API</div>`;
+    }
+    if (c.fallbackUsed) {
+      html += `<div class="fin-bot">🔄 Fallback: ${escapeHtml(c.fallbackUsed)}</div>`;
+    }
+  });
+
+  html += '</div>';
+  addMessage('agent', 'compare_data ✅', html, `${elapsed}ms`);
+}
+
+async function runSecCompare() {
+  const urls = [
+    'https://www.sec.gov/cgi-bin/browse-edgar?CIK=AAPL',
+    'https://www.sec.gov/cgi-bin/browse-edgar?CIK=MSFT'
+  ];
+  addMessage('system', 'System', '&#128200; <strong>SEC EDGAR Dual-Path Demo:</strong> SEC blocks automated browsers — the agent will automatically fall back to the XBRL API at data.sec.gov for structured financial data.');
+  await runSecSkill(urls);
+}
+
+async function runSecCustom() {
+  const input = prompt('Enter two or more tickers separated by comma (e.g., GOOGL,AMZN):', 'GOOGL,AMZN');
+  if (!input) return;
+  const tickers = input.split(',').map(t => t.trim().toUpperCase()).filter(Boolean);
+  if (tickers.length < 2) { addMessage('error', 'Error', 'Enter at least 2 tickers separated by comma'); return; }
+  const urls = tickers.map(t => `https://www.sec.gov/cgi-bin/browse-edgar?CIK=${t}`);
+  addMessage('system', 'System', `&#128200; <strong>SEC EDGAR Compare:</strong> ${tickers.join(' vs ')} — will use XBRL API fallback if browser is blocked.`);
+  await runSecSkill(urls);
+}
+
+async function runSecSkill(urls) {
+  addMessage('user', 'You', `<strong>compare_data</strong> ${urls.length} SEC filings`);
+  setLoading(true);
+  updateStatus('Running compare_data (SEC EDGAR)...');
+  try {
+    const start = Date.now();
+    const data = await callApi('POST', '/api/skills/compare_data', {
+      userId: 'demo-user',
+      sessionId: SESSION_ID,
+      params: { urls, mode: 'all' }
+    });
+    const elapsed = Date.now() - start;
+    if (data.success) {
+      renderSecComparison(data.data, elapsed);
+    } else {
+      addJsonMessage('error', 'compare_data ❌', data, elapsed);
+    }
+    updateStatus(`compare_data completed in ${elapsed}ms`);
+  } catch (e) {
+    addMessage('error', 'Error', e.message);
+    updateStatus('Request failed');
+  }
+  setLoading(false);
+}
+
 async function runWorkflow(prompt) {
   addMessage('user', 'You', `<strong>Workflow:</strong> ${escapeHtml(prompt)}`);
   setLoading(true);
@@ -271,7 +427,21 @@ async function handleSend() {
     const urlMatch = text.match(/https?:\/\/[^\s]+/);
     await runSkill('extract_content', { url: urlMatch?.[0] || 'https://learn.microsoft.com', mode: 'text' });
   } else if (lower.startsWith('compare')) {
-    await runSkill('compare_data', { urls: ['https://learn.microsoft.com/azure', 'https://learn.microsoft.com/dotnet'], mode: 'text' });
+    // Check for SEC ticker patterns (e.g., "compare AAPL vs MSFT")
+    const tickerMatch = text.match(/compare\s+([A-Za-z]{1,5})\s+(?:vs?\.?|and|with)\s+([A-Za-z]{1,5})/i);
+    if (tickerMatch) {
+      const t1 = tickerMatch[1].toUpperCase();
+      const t2 = tickerMatch[2].toUpperCase();
+      const urls = [
+        `https://www.sec.gov/cgi-bin/browse-edgar?CIK=${t1}`,
+        `https://www.sec.gov/cgi-bin/browse-edgar?CIK=${t2}`
+      ];
+      addMessage('system', 'System', `&#128200; <strong>SEC EDGAR Compare:</strong> ${t1} vs ${t2}`);
+      await runSecSkill(urls);
+    } else {
+      // Default: treat as workflow
+      await runWorkflow(text);
+    }
   } else if (lower.startsWith('discover') || lower.startsWith('find api')) {
     const urlMatch = text.match(/https?:\/\/[^\s]+/);
     await runSkill('discover_apis', { baseUrl: urlMatch?.[0] || 'https://learn.microsoft.com' });

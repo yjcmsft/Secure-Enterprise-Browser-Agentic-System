@@ -7,7 +7,8 @@ An **Azure AI Foundry Agent** that securely navigates, reads, and acts across en
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com)
 [![Built with Azure AI Foundry](https://img.shields.io/badge/Built%20with-Azure%20AI%20Foundry-blue)](https://azure.microsoft.com/products/ai-foundry)
 [![AG-UI Protocol](https://img.shields.io/badge/Streaming-AG--UI%20Protocol-purple)](https://docs.ag-ui.com)
-[![Tests](https://img.shields.io/badge/Tests-392%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/Tests-456%20passing-brightgreen)]()
+[![Coverage](https://img.shields.io/badge/Coverage-92.88%25-brightgreen)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
 ---
@@ -23,8 +24,9 @@ An **Azure AI Foundry Agent** that securely navigates, reads, and acts across en
      ▼
  🤖 Browser Agent ── 12 skills, 3 parallel workstreams ──────────
  │
- ├─ 📊 Workstream 1: Financial Intelligence
+ ┌─ 📊 Workstream 1: Financial Intelligence
  │  navigate_page → SEC/IR pages → extract_content → compare_data
+ │  └─ 🔄 Bot-detection fallback: SEC EDGAR XBRL API (data.sec.gov)
  │
  ├─ 🚨 Workstream 2: Incident Status
  │  navigate_page → ServiceNow → extract_content → Grafana dashboard
@@ -97,13 +99,15 @@ Enterprise Tenant (Azure Entra ID)
 | | Feature | Why it matters |
 |---|---|---|
 | 🔀 | **Dual-Path Intelligence** | REST/GraphQL APIs first, Playwright DOM fallback — 10x more reliable |
-| 🔒 | **Zero Trust Security** | 5-layer pipeline: Entra ID → URL allowlist → Content Safety → approval → audit |
+| �️ | **Bot-Detection Fallback** | Auto-detects SEC EDGAR / Cloudflare / CAPTCHA blocks → falls back to structured APIs |
+| �🔒 | **Zero Trust Security** | 5-layer pipeline: Entra ID → URL allowlist → Content Safety → approval → audit |
 | 🤖 | **12 Agent Skills** | Navigate, extract, fill, submit, compare, workflow + Teams, Calendar, Cards |
 | 📡 | **AG-UI Streaming** | Real-time SSE → CopilotKit or any AG-UI frontend |
 | ☁️ | **Azure AI Foundry** | Function tools + persistent threads + governance |
 | 📊 | **Fabric + Work IQ** | Lakehouse analytics + productivity metrics ("saved 4 hours") |
+| 🎛️ | **13 Feature Flags** | Fine-grained runtime control per security, browser, analytics, and agent features |
 | 🚀 | **One-Command Deploy** | Bicep IaC → GitHub Actions → staging → prod in <10 min |
-| 🧪 | **392 Tests** | 52 files · unit + integration + e2e |
+| 🧪 | **456 Tests · 92.88% Coverage** | 54 files · unit + integration + e2e |
 
 ---
 
@@ -113,7 +117,7 @@ Enterprise Tenant (Azure Entra ID)
 git clone https://github.com/yjcmsft/Secure-Enterprise-Browser-Agentic-System.git
 cd Secure-Enterprise-Browser-Agentic-System
 npm install && npm run build
-npm test                          # 392 tests pass
+npm test                          # 456 tests pass
 
 # Deploy to Azure
 cp .env.example .env              # fill in Azure credentials
@@ -124,7 +128,7 @@ npm start                         # http://localhost:3000
 | Command | Description |
 |---|---|
 | `npm run dev` | Dev server with hot reload |
-| `npm test` | Run 392 tests (Vitest) |
+| `npm test` | Run 456 tests (Vitest) |
 | `npm run test:coverage` | Tests + coverage report |
 | `npm run lint` | Lint source + tests |
 | `npm run typecheck` | TypeScript check |
@@ -147,6 +151,11 @@ curl -X POST http://localhost:3000/api/skills/extract_content \
   -H "Content-Type: application/json" \
   -d '{"userId":"demo","sessionId":"s1","params":{"url":"https://learn.microsoft.com","mode":"text"}}'
 
+# Compare SEC filings (AAPL vs MSFT via EDGAR XBRL API)
+curl -X POST http://localhost:3000/api/skills/compare_data \
+  -H "Content-Type: application/json" \
+  -d '{"userId":"demo","sessionId":"s1","params":{"urls":["https://www.sec.gov/cgi-bin/browse-edgar?CIK=AAPL","https://www.sec.gov/cgi-bin/browse-edgar?CIK=MSFT"],"mode":"all"}}'
+
 # Multi-step workflow
 curl -X POST http://localhost:3000/api/workflow \
   -H "Content-Type: application/json" \
@@ -166,6 +175,56 @@ const { messages, sendMessage } = useAgent({
 ```
 
 **Request correlation:** Pass `x-request-id` header → returned in response + traced in Application Insights.
+
+---
+
+## 📡 SEC EDGAR Dual-Path Demo
+
+The `compare_data` skill demonstrates the **dual-path strategy** in action. SEC EDGAR blocks automated browser access with a bot-detection page — exactly when the agent falls back to the XBRL REST API at `data.sec.gov`.
+
+```
+ 👤 "Compare AAPL vs MSFT revenue"
+     │
+     ▼
+ 🤖 compare_data ── 2 URLs ──────────────────────────────────────
+ │
+ ├─ 🔍 Is URL a known SEC EDGAR page?  ✅ Yes
+ │     └─ Skip browser entirely → call SEC EDGAR XBRL API
+ │
+ ├─ 📡 GET data.sec.gov/api/xbrl/companyfacts/CIK0000320193.json
+ │     └─ Apple Inc: Revenue $394.33B · Net Income $97.0B · ...
+ │
+ ├─ 📡 GET data.sec.gov/api/xbrl/companyfacts/CIK0000789019.json
+ │     └─ Microsoft: Revenue $245.12B · Net Income $88.1B · ...
+ │
+ └─ 📊 Structured comparison table returned to UI
+       (formatted currency, fiscal year, recent filings)
+```
+
+**Without dual-path:** SEC returns a bot-detection page → agent gets garbage text.
+**With dual-path:** Agent detects it's an SEC URL → calls XBRL API → gets structured GAAP financials.
+
+```bash
+# Try it:
+curl -X POST http://localhost:3000/api/skills/compare_data \
+  -H "Content-Type: application/json" \
+  -d '{"userId":"demo","sessionId":"s1","params":{"urls":["https://www.sec.gov/cgi-bin/browse-edgar?CIK=AAPL","https://www.sec.gov/cgi-bin/browse-edgar?CIK=MSFT"],"mode":"all"}}'
+```
+
+### Supported Tickers (pre-mapped CIK)
+
+`AAPL` · `MSFT` · `GOOGL` · `AMZN` · `META` · `TSLA` · `NVDA` · `JPM` · `V` · `JNJ` · `WMT` · `PG` · `UNH` · `MA` · `HD`
+
+Any numeric CIK also works (e.g., `320193` for Apple).
+
+### Bot-Detection Patterns Recognized
+
+| Provider | Pattern | Fallback |
+|---|---|---|
+| **SEC EDGAR** | "Undeclared Automated Tool", rate limit, filing block | SEC XBRL API |
+| **Cloudflare** | Browser challenge, challenge-platform | Generic API |
+| **CAPTCHA** | reCAPTCHA, hCaptcha | Generic API |
+| **Generic** | "Access denied...automated" | Generic API |
 
 ---
 
@@ -217,35 +276,85 @@ Request → Entra ID → URL Allowlist → Content Safety (input)
 |---|---|
 | **Privacy** | PII auto-redaction · data residency per region |
 | **Accountability** | Human approval for writes · immutable audit trail |
-| **Reliability** | API→DOM fallback · retry with backoff · health probes |
+| **Reliability** | API→DOM fallback · bot-detection auto-recovery · retry with backoff · health probes |
 | **Compliance** | SOC 2 · ISO 27001 · GDPR · HIPAA-eligible |
+
+---
+
+## 🎛️ Feature Flags
+
+The agent supports 13 runtime feature flags across 4 categories, configurable via `feature-flags.txt` and exposed at `GET /api/features`:
+
+| Category | Flags | Default |
+|---|---|---|
+| **Security** | `url_allowlist`, `content_safety`, `approval_gate`, `pii_redaction`, `audit_logging` | All `true` |
+| **Browser** | `dual_path_routing`, `api_discovery`, `bot_detection_fallback` | All `true` |
+| **Analytics** | `fabric_analytics`, `work_iq_metrics` | `false` (opt-in) |
+| **Agent** | `agui_streaming`, `workflow_orchestration`, `screenshot_capture` | All `true` |
+
+Each security pipeline step is gated by its corresponding flag — disable any layer independently without code changes.
+
+---
+
+## 🧪 Test Coverage
+
+| Module | Stmts | Branches | Functions | Lines |
+|---|---|---|---|---|
+| **src (core)** | 99.13% | 91.83% | 100% | 100% |
+| **src/api** | 92.55% | 92.85% | 92.85% | 92.3% |
+| **src/browser** | 100% | 100% | 100% | 100% |
+| **src/fabric** | 91.26% | 86.44% | 95.65% | 91.91% |
+| **src/graph** | 97.22% | 90.54% | 95.23% | 97.14% |
+| **src/orchestrator** | 64.86% | 76.38% | 63.63% | 64.78% |
+| **src/security** | 94.53% | 86.58% | 100% | 94.47% |
+| **src/skills** | 95.17% | 88.77% | 90.47% | 95.83% |
+| **TOTAL** | **92.88%** | **87.62%** | **94.85%** | **93.15%** |
 
 ---
 
 ## 📂 Repository Structure
 
 ```
-src/                          # TypeScript source (45 files)
-├── index.ts                  # Express server + endpoints
+src/                          # TypeScript source (49 files)
+├── index.ts                  # Express server + endpoints + landing page
+├── config.ts                 # Zod-validated env config (22 vars)
+├── feature-flags.ts          # 13 feature flags (4 categories)
 ├── foundry-agent.ts          # Azure AI Foundry (12 function tools)
 ├── agui-handler.ts           # AG-UI SSE streaming
-├── skills/                   # 8 browser skills + registry
-├── security/                 # 5-layer pipeline (7 modules)
-├── api/                      # Dual-path: REST/GraphQL + DOM
-├── browser/                  # Playwright pool + DOM parser
-├── graph/                    # Teams, Calendar, Cards, Work Patterns
-├── fabric/                   # Fabric Lakehouse + Work IQ
-└── orchestrator/             # Task planner + tool router
+├── runtime.ts                # Runtime singletons
+├── skills/                   # 8 browser skills + registry (9 files)
+├── security/                 # 5-layer pipeline (7 files)
+├── api/                      # Dual-path + bot-detection + SEC EDGAR (7 files)
+│   ├── dual-path-router.ts   # API-first routing with known providers
+│   ├── bot-detector.ts       # Bot/CAPTCHA detection (SEC, Cloudflare, etc.)
+│   ├── sec-edgar-connector.ts # SEC EDGAR XBRL API (data.sec.gov)
+│   ├── rest-connector.ts     # REST with retry + backoff
+│   ├── graphql-connector.ts  # GraphQL with retry + backoff
+│   ├── schema-discovery.ts   # OpenAPI/Swagger probing + cache
+│   └── response-normalizer.ts
+├── browser/                  # Playwright pool + DOM parser (4 files)
+├── graph/                    # Teams, Calendar, Cards, Work Patterns (5 files)
+├── fabric/                   # Fabric Lakehouse + Work IQ (4 files)
+├── orchestrator/             # Task planner + tool router (3 files)
+└── types/                    # TypeScript type definitions (4 files)
 
+frontend/                     # Interactive demo UI (chat + SEC compare)
 infra/                        # Bicep IaC (8 modules)
 ├── main.bicep                # Root template
 ├── modules/                  # OpenAI, Cosmos, KV, ACR, Container Apps...
 └── parameters/               # dev / staging / prod
 
-tests/                        # 392 tests across 52 files
-├── unit/                     # Component isolation
-├── integration/              # Cross-module flows
-└── e2e/                      # Smoke tests
+scripts/                      # Deployment & demo scripts
+├── deploy.ps1                # Production deployment
+├── demo.ps1                  # Interactive demo (6 scenarios)
+├── customer-demo.ps1         # Customer-facing demo (5 use cases)
+└── setup-azure-oidc.*        # GitHub Actions OIDC setup (PS1 + Bash)
+
+tests/                        # 456 tests across 54 files
+├── unit/                     # 46 files · component isolation
+│   └── api/                  # bot-detector, sec-edgar-connector, connectors...
+├── integration/              # 4 files · cross-module flows
+└── e2e/                      # 1 file · smoke tests
 
 docs/adr/                     # 6 Architecture Decision Records
 .github/workflows/            # CI/CD: test → staging → production
@@ -275,6 +384,7 @@ app-package/                  # Azure AI Foundry agent manifest
 | [agents.md](./agents.md) | Agent types, AG-UI protocol, lifecycle, Entra ID auth |
 | [skills.md](./skills.md) | 12 skill definitions, security classification, Graph skills |
 | [CHANGELOG.md](./CHANGELOG.md) | Version history |
+| [docs/CHANGELOG.md](./docs/CHANGELOG.md) | Detailed changelog with all updates |
 | [docs/adr/](./docs/adr/) | 6 ADRs — the "why" behind every major choice |
 
 ---

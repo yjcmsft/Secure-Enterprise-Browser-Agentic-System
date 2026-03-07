@@ -22,4 +22,24 @@ describe("DualPathRouter", () => {
     expect(discovery).toBeDefined();
     expect(typeof discovery.discover).toBe("function");
   });
+
+  test("returns api path for SEC EDGAR URLs (known provider)", async () => {
+    const router = new DualPathRouter();
+    const result = await router.decide("https://www.sec.gov/cgi-bin/browse-edgar?CIK=AAPL");
+    expect(result.path).toBe("api");
+    expect(result.reason).toContain("SEC EDGAR");
+  });
+
+  test("returns api path for data.sec.gov", async () => {
+    const router = new DualPathRouter();
+    const result = await router.decide("https://data.sec.gov/api/xbrl/companyfacts/CIK0000320193.json");
+    expect(result.path).toBe("api");
+    expect(result.reason).toContain("SEC EDGAR");
+  });
+
+  test("returns api path for edgar.sec.gov", async () => {
+    const router = new DualPathRouter();
+    const result = await router.decide("https://edgar.sec.gov/cgi-bin/browse-edgar?CIK=MSFT");
+    expect(result.path).toBe("api");
+  });
 });
