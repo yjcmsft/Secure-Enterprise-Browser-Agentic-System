@@ -22,6 +22,15 @@ const logger = createLogger({
 
 app.use(express.json({ limit: "2mb" }));
 
+// CORS — allow frontend to call API from different origin
+app.use((_req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*");
+  res.header("Access-Control-Allow-Headers", "Content-Type, x-request-id");
+  res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  if (_req.method === "OPTIONS") { res.sendStatus(200); return; }
+  next();
+});
+
 // ---------------------------------------------------------------------------
 // Rate limiting — protects all API endpoints from abuse
 // ---------------------------------------------------------------------------

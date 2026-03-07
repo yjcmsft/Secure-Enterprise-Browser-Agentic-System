@@ -1,0 +1,304 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Browser Agent - Interactive Demo</title>
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+  body { font-family: system-ui, -apple-system, sans-serif; background: #0f172a; color: #e2e8f0; height: 100vh; display: flex; flex-direction: column; }
+  
+  header { padding: 16px 24px; background: #1e293b; border-bottom: 1px solid #334155; display: flex; align-items: center; gap: 12px; }
+  header h1 { font-size: 1.2rem; color: #38bdf8; }
+  header .badge { padding: 3px 10px; border-radius: 999px; font-size: .7rem; font-weight: 600; }
+  .b-green { background: #14532d; color: #4ade80; }
+  .b-blue { background: #1e3a5f; color: #38bdf8; }
+  
+  .container { display: flex; flex: 1; overflow: hidden; }
+  
+  /* Left panel - Chat */
+  .chat-panel { flex: 1; display: flex; flex-direction: column; border-right: 1px solid #334155; }
+  .chat-messages { flex: 1; overflow-y: auto; padding: 16px; }
+  .msg { margin-bottom: 12px; padding: 10px 14px; border-radius: 12px; max-width: 85%; font-size: .9rem; line-height: 1.5; }
+  .msg-user { background: #1d4ed8; margin-left: auto; border-bottom-right-radius: 4px; }
+  .msg-agent { background: #1e293b; border: 1px solid #334155; border-bottom-left-radius: 4px; }
+  .msg-system { background: #422006; border: 1px solid #92400e; font-size: .8rem; color: #fbbf24; }
+  .msg-error { background: #450a0a; border: 1px solid #991b1b; color: #fca5a5; }
+  .msg pre { white-space: pre-wrap; word-break: break-word; font-family: 'Cascadia Code', 'Fira Code', monospace; font-size: .8rem; margin-top: 6px; background: #0f172a; padding: 8px; border-radius: 6px; }
+  .msg .label { font-size: .7rem; color: #94a3b8; margin-bottom: 4px; }
+  .msg .duration { font-size: .7rem; color: #64748b; margin-top: 4px; }
+  
+  .chat-input { padding: 12px 16px; background: #1e293b; border-top: 1px solid #334155; display: flex; gap: 8px; }
+  .chat-input input { flex: 1; padding: 10px 14px; border: 1px solid #334155; border-radius: 8px; background: #0f172a; color: #e2e8f0; font-size: .9rem; outline: none; }
+  .chat-input input:focus { border-color: #38bdf8; }
+  .chat-input button { padding: 10px 20px; background: #2563eb; color: white; border: none; border-radius: 8px; cursor: pointer; font-weight: 600; }
+  .chat-input button:hover { background: #1d4ed8; }
+  .chat-input button:disabled { background: #334155; cursor: not-allowed; }
+  
+  /* Right panel - Skills */
+  .skills-panel { width: 320px; overflow-y: auto; padding: 16px; background: #0f172a; }
+  .skills-panel h2 { font-size: 1rem; color: #94a3b8; margin-bottom: 12px; }
+  .skill-btn { width: 100%; padding: 10px 12px; margin-bottom: 6px; background: #1e293b; border: 1px solid #334155; border-radius: 8px; color: #e2e8f0; cursor: pointer; text-align: left; font-size: .8rem; }
+  .skill-btn:hover { border-color: #38bdf8; background: #1e3a5f; }
+  .skill-btn .skill-name { font-weight: 600; color: #38bdf8; }
+  .skill-btn .skill-desc { color: #94a3b8; font-size: .75rem; margin-top: 2px; }
+  
+  .quick-links { margin-top: 16px; }
+  .quick-links h2 { font-size: 1rem; color: #94a3b8; margin-bottom: 8px; }
+  .quick-link { display: block; padding: 8px 12px; margin-bottom: 4px; background: #1e293b; border: 1px solid #334155; border-radius: 6px; color: #38bdf8; text-decoration: none; font-size: .8rem; cursor: pointer; }
+  .quick-link:hover { background: #1e3a5f; }
+  
+  .loading { display: inline-block; }
+  .loading::after { content: ''; animation: dots 1.5s steps(3) infinite; }
+  @keyframes dots { 0% { content: '.'; } 33% { content: '..'; } 66% { content: '...'; } }
+  
+  /* Status bar */
+  .status-bar { padding: 6px 16px; background: #1e293b; border-top: 1px solid #334155; display: flex; justify-content: space-between; font-size: .75rem; color: #64748b; }
+  .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; }
+  .dot-green { background: #4ade80; }
+  .dot-red { background: #f87171; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>&#127760; Secure Enterprise Browser Agent</h1>
+  <span class="badge b-blue">AG-UI</span>
+  <span class="badge b-green" id="status-badge">Checking...</span>
+</header>
+
+<div class="container">
+  <div class="chat-panel">
+    <div class="chat-messages" id="messages">
+      <div class="msg msg-system">
+        <div class="label">System</div>
+        Welcome! Type a command or click a skill on the right panel.
+        <br><br>
+        <strong>Try these:</strong><br>
+        &bull; Navigate to learn.microsoft.com<br>
+        &bull; Extract content from learn.microsoft.com<br>
+        &bull; Compare azure and dotnet docs
+      </div>
+    </div>
+    <div class="chat-input">
+      <input type="text" id="prompt" placeholder="Type a command... (e.g. 'Navigate to learn.microsoft.com')" autofocus>
+      <button id="send-btn" onclick="handleSend()">Send</button>
+    </div>
+  </div>
+  
+  <div class="skills-panel">
+    <h2>&#128736; Skills</h2>
+    <div class="skill-btn" onclick="runSkill('navigate_page', {url: prompt('Enter URL:', 'https://learn.microsoft.com')})">
+      <div class="skill-name">navigate_page</div>
+      <div class="skill-desc">Navigate to a URL via Playwright</div>
+    </div>
+    <div class="skill-btn" onclick="runSkill('extract_content', {url: prompt('Enter URL:', 'https://learn.microsoft.com'), mode: 'text'})">
+      <div class="skill-name">extract_content</div>
+      <div class="skill-desc">Extract text/tables/links from page</div>
+    </div>
+    <div class="skill-btn" onclick="runSkill('discover_apis', {baseUrl: prompt('Enter base URL:', 'https://learn.microsoft.com')})">
+      <div class="skill-name">discover_apis</div>
+      <div class="skill-desc">Probe for REST/GraphQL APIs</div>
+    </div>
+    <div class="skill-btn" onclick="runSkill('capture_screenshot', {})">
+      <div class="skill-name">capture_screenshot</div>
+      <div class="skill-desc">Screenshot current page</div>
+    </div>
+    <div class="skill-btn" onclick="runSkill('compare_data', {urls: ['https://learn.microsoft.com/azure','https://learn.microsoft.com/dotnet'], mode: 'text'})">
+      <div class="skill-name">compare_data</div>
+      <div class="skill-desc">Compare Azure vs .NET docs</div>
+    </div>
+    <div class="skill-btn" onclick="runSkill('navigate_page', {url: 'https://evil-site.com/hack'})">
+      <div class="skill-name">&#128274; Security Test</div>
+      <div class="skill-desc">Try blocked URL (should fail)</div>
+    </div>
+    
+    <div class="quick-links">
+      <h2>&#9889; Quick Actions</h2>
+      <div class="quick-link" onclick="runWorkflow('Navigate to learn.microsoft.com and extract the text')">Workflow: Navigate + Extract</div>
+      <div class="quick-link" onclick="checkHealth()">Health Check</div>
+      <div class="quick-link" onclick="checkReady()">Readiness Probe</div>
+    </div>
+  </div>
+</div>
+
+<div class="status-bar">
+  <span><span class="status-dot dot-green" id="status-dot"></span><span id="server-status">Connecting...</span></span>
+  <span id="last-request"></span>
+</div>
+
+<script>
+const API = 'http://localhost:3000';
+const messagesEl = document.getElementById('messages');
+const promptEl = document.getElementById('prompt');
+const sendBtn = document.getElementById('send-btn');
+
+function addMessage(type, label, content, extra = '') {
+  const div = document.createElement('div');
+  div.className = `msg msg-${type}`;
+  div.innerHTML = `<div class="label">${label}</div>${content}${extra ? `<div class="duration">${extra}</div>` : ''}`;
+  messagesEl.appendChild(div);
+  messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+
+function addJsonMessage(type, label, data, duration) {
+  const json = JSON.stringify(data, null, 2);
+  addMessage(type, label, `<pre>${escapeHtml(json)}</pre>`, duration ? `${duration}ms` : '');
+}
+
+function escapeHtml(s) {
+  return s.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+}
+
+function setLoading(loading) {
+  sendBtn.disabled = loading;
+  sendBtn.textContent = loading ? 'Running...' : 'Send';
+}
+
+function updateStatus(text) {
+  document.getElementById('last-request').textContent = text;
+}
+
+async function callApi(method, path, body) {
+  const opts = { method, headers: { 'Content-Type': 'application/json' } };
+  if (body) opts.body = JSON.stringify(body);
+  const res = await fetch(`${API}${path}`, opts);
+  return res.json();
+}
+
+async function checkHealth() {
+  addMessage('user', 'You', 'Health check');
+  try {
+    const data = await callApi('GET', '/health');
+    addJsonMessage('agent', 'Health', data);
+  } catch (e) {
+    addMessage('error', 'Error', e.message);
+  }
+}
+
+async function checkReady() {
+  addMessage('user', 'You', 'Readiness probe');
+  try {
+    const data = await callApi('GET', '/ready');
+    addJsonMessage('agent', 'Ready', data);
+  } catch (e) {
+    addMessage('error', 'Error', e.message);
+  }
+}
+
+async function runSkill(name, params) {
+  if (params && params.url === null) return; // User cancelled prompt
+  if (params && params.baseUrl === null) return;
+  
+  addMessage('user', 'You', `<strong>${name}</strong> ${JSON.stringify(params || {})}`);
+  setLoading(true);
+  updateStatus(`Running ${name}...`);
+  
+  try {
+    const start = Date.now();
+    const data = await callApi('POST', `/api/skills/${name}`, {
+      userId: 'demo-user',
+      sessionId: `ui-${Date.now()}`,
+      params: params || {}
+    });
+    const elapsed = Date.now() - start;
+    
+    if (data.success) {
+      addJsonMessage('agent', `${name} ✅`, data.data || data, elapsed);
+    } else {
+      addJsonMessage('error', `${name} ❌`, data, elapsed);
+    }
+    updateStatus(`${name} completed in ${elapsed}ms`);
+  } catch (e) {
+    addMessage('error', 'Error', e.message);
+    updateStatus('Request failed');
+  }
+  setLoading(false);
+}
+
+async function runWorkflow(prompt) {
+  addMessage('user', 'You', `<strong>Workflow:</strong> ${escapeHtml(prompt)}`);
+  setLoading(true);
+  updateStatus('Running workflow...');
+  
+  try {
+    const start = Date.now();
+    const data = await callApi('POST', '/api/workflow', {
+      userId: 'demo-user',
+      sessionId: `wf-${Date.now()}`,
+      prompt: prompt
+    });
+    const elapsed = Date.now() - start;
+    
+    // Show plan
+    if (data.plan) {
+      const steps = data.plan.steps.map((s, i) => `${i+1}. ${s.skill}(${JSON.stringify(s.params)})`).join('\n');
+      addMessage('agent', 'Plan', `<pre>${escapeHtml(steps)}</pre>`);
+    }
+    
+    // Show result
+    addJsonMessage(data.result?.success ? 'agent' : 'error', 'Result', data.result || data, elapsed);
+    updateStatus(`Workflow completed in ${elapsed}ms`);
+  } catch (e) {
+    addMessage('error', 'Error', e.message);
+  }
+  setLoading(false);
+}
+
+async function handleSend() {
+  const text = promptEl.value.trim();
+  if (!text) return;
+  promptEl.value = '';
+  
+  const lower = text.toLowerCase();
+  
+  // Smart routing based on input
+  if (lower.startsWith('navigate') || lower.startsWith('go to') || lower.startsWith('open')) {
+    const urlMatch = text.match(/https?:\/\/[^\s]+/);
+    if (urlMatch) {
+      await runSkill('navigate_page', { url: urlMatch[0] });
+    } else {
+      const site = text.replace(/^(navigate|go) to\s*/i, '').replace(/^open\s*/i, '').trim();
+      await runSkill('navigate_page', { url: `https://${site}` });
+    }
+  } else if (lower.startsWith('extract') || lower.startsWith('get content')) {
+    const urlMatch = text.match(/https?:\/\/[^\s]+/);
+    await runSkill('extract_content', { url: urlMatch?.[0] || 'https://learn.microsoft.com', mode: 'text' });
+  } else if (lower.startsWith('compare')) {
+    await runSkill('compare_data', { urls: ['https://learn.microsoft.com/azure', 'https://learn.microsoft.com/dotnet'], mode: 'text' });
+  } else if (lower.startsWith('discover') || lower.startsWith('find api')) {
+    const urlMatch = text.match(/https?:\/\/[^\s]+/);
+    await runSkill('discover_apis', { baseUrl: urlMatch?.[0] || 'https://learn.microsoft.com' });
+  } else if (lower === 'health') {
+    await checkHealth();
+  } else if (lower === 'ready') {
+    await checkReady();
+  } else {
+    // Default: treat as workflow
+    await runWorkflow(text);
+  }
+}
+
+promptEl.addEventListener('keypress', (e) => {
+  if (e.key === 'Enter' && !sendBtn.disabled) handleSend();
+});
+
+// Check server status on load
+(async () => {
+  try {
+    const data = await callApi('GET', '/health');
+    document.getElementById('status-badge').textContent = 'Connected';
+    document.getElementById('status-badge').className = 'badge b-green';
+    document.getElementById('status-dot').className = 'status-dot dot-green';
+    document.getElementById('server-status').textContent = `Server: ${data.status} | localhost:3000`;
+  } catch {
+    document.getElementById('status-badge').textContent = 'Offline';
+    document.getElementById('status-badge').style.background = '#450a0a';
+    document.getElementById('status-badge').style.color = '#fca5a5';
+    document.getElementById('status-dot').className = 'status-dot dot-red';
+    document.getElementById('server-status').textContent = 'Server offline - run npm start';
+  }
+})();
+</script>
+</body>
+</html>
