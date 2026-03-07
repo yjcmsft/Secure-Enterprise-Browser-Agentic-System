@@ -1,0 +1,46 @@
+# Feature Flags — toggle agent capabilities on/off
+# Set to true or false. Lines starting with # are comments.
+# Restart the server after changes.
+
+# ── Security Features ──
+# URL allowlist enforcement (false = allow all URLs)
+url_allowlist=true
+
+# Azure AI Content Safety screening (false = skip input/output screening)
+content_safety=true
+
+# Human-in-the-loop approval for write actions (false = auto-approve)
+approval_gate=true
+
+# PII redaction in responses (false = return raw content)
+pii_redaction=true
+
+# Audit logging to Cosmos DB (false = skip audit logs)
+audit_logging=true
+
+# ── Browser Features ──
+# Dual-path routing: API-first with DOM fallback (false = always use DOM)
+dual_path_routing=true
+
+# API schema discovery / OpenAPI probing (false = skip API discovery)
+api_discovery=true
+
+# Bot detection fallback: retry with custom user-agent when blocked (false = fail on bot detection)
+bot_detection_fallback=true
+
+# ── Analytics Features ──
+# Microsoft Fabric analytics pipeline (false = disable Fabric streaming)
+fabric_analytics=false
+
+# Work IQ productivity metrics (false = skip productivity tracking)
+work_iq_metrics=false
+
+# ── Agent Features ──
+# AG-UI SSE streaming endpoint (false = disable /api/agui/stream)
+agui_streaming=true
+
+# Multi-step workflow orchestration (false = disable /api/workflow)
+workflow_orchestration=true
+
+# Screenshot capture (false = disable capture_screenshot skill)
+screenshot_capture=true

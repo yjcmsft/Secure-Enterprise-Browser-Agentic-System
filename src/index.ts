@@ -10,6 +10,8 @@ import { ToolRouter } from "./orchestrator/tool-router.js";
 import { runtime, sessionManager } from "./runtime.js";
 import { isSecurityError } from "./security/errors.js";
 
+import { featureFlags } from "./feature-flags.js";
+
 const app = express();
 const planner = new TaskPlanner();
 const toolRouter = new ToolRouter();
@@ -111,6 +113,10 @@ app.get("/", (_req, res) => {
 app.get("/health", (req, res) => {
   const requestId = resolveRequestId(req, res);
   res.status(200).json({ requestId, status: "healthy" });
+});
+
+app.get("/api/features", (_req, res) => {
+  res.status(200).json(featureFlags);
 });
 
 app.get("/ready", async (req, res) => {
