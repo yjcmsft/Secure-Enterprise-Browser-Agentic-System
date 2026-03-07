@@ -7,6 +7,7 @@ An **Azure AI Foundry Agent** that securely navigates, reads, and acts across en
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com)
 [![Built with Azure AI Foundry](https://img.shields.io/badge/Built%20with-Azure%20AI%20Foundry-blue)](https://azure.microsoft.com/products/ai-foundry)
 [![AG-UI Protocol](https://img.shields.io/badge/Streaming-AG--UI%20Protocol-purple)](https://docs.ag-ui.com)
+[![GitHub Copilot SDK](https://img.shields.io/badge/Copilot%20SDK-v0.1.30-black)](https://github.com/github/copilot-sdk)
 [![Tests](https://img.shields.io/badge/Tests-456%20passing-brightgreen)]()
 [![Coverage](https://img.shields.io/badge/Coverage-92.88%25-brightgreen)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
@@ -68,7 +69,8 @@ Industry-specific benchmarks built into Work IQ: Financial Services, Healthcare,
 | 🤖 | **12 Agent Skills** | Navigate, extract, fill, submit, compare, workflow + Teams, Calendar, Cards |
 | 📡 | **AG-UI Streaming** | Real-time SSE → CopilotKit or any AG-UI frontend · local demo mode without Foundry |
 | ☁️ | **Azure AI Foundry** | Function tools + persistent threads + governance |
-| 📊 | **Fabric + Work IQ** | Lakehouse analytics + productivity metrics ("saved 4 hours") |
+| � | **[GitHub Copilot SDK](https://github.com/github/copilot-sdk)** | Alternative agent runtime via `@github/copilot-sdk` · 12 skills as custom tools · BYOK with Azure OpenAI |
+| �📊 | **Fabric + Work IQ** | Lakehouse analytics + productivity metrics ("saved 4 hours") |
 | 🎛️ | **13 Feature Flags** | Fine-grained runtime control per security, browser, analytics, and agent features |
 | 🚀 | **One-Command Deploy** | Bicep IaC → GitHub Actions → staging → prod in <10 min |
 | 🧪 | **456 Tests · 92.88% Coverage** | 54 files · unit + integration + e2e |
@@ -134,6 +136,11 @@ curl -X POST http://localhost:3000/api/workflow \
 curl -X POST http://localhost:3000/api/agui/stream \
   -H "Content-Type: application/json" \
   -d '{"prompt":"Extract the title from learn.microsoft.com","userId":"demo","sessionId":"s1"}'
+
+# GitHub Copilot SDK agent (requires Copilot CLI + GH_TOKEN)
+curl -X POST http://localhost:3000/api/copilot \
+  -H "Content-Type: application/json" \
+  -d '{"prompt":"Navigate to learn.microsoft.com and extract the title","userId":"demo","sessionId":"s1"}'
 ```
 
 **CopilotKit frontend:**
@@ -206,6 +213,7 @@ flowchart TB
     end
     subgraph Azure["☁️ Azure"]
         CA["Container Apps"] --> Foundry["AI Foundry\n(GPT-4o)"]
+        CA --> CopilotSDK["GitHub Copilot SDK\n(@github/copilot-sdk)"]
         CA --> Entra["Entra ID"]
         CA --> KV["Key Vault"]
         CA --> Cosmos["Cosmos DB"]
@@ -221,6 +229,7 @@ flowchart TB
 | Service | Role |
 |---|---|
 | **Azure AI Foundry** | Agent lifecycle, 12 function tools, thread management |
+| **[GitHub Copilot SDK](https://github.com/github/copilot-sdk)** | Alternative agent runtime, 12 custom tools via `defineTool()`, BYOK with Azure OpenAI |
 | **Azure OpenAI** | GPT-4o for planning + generation |
 | **Entra ID** | SSO, RBAC, per-skill token delegation |
 | **Container Apps** | Auto-scaling runtime (0→20 replicas) |
@@ -276,12 +285,13 @@ Browser module: 100% across all metrics. Run `npm run test:coverage` for the ful
 ## 📂 Repository Structure
 
 ```
-src/                          # TypeScript source (49 files)
+src/                          # TypeScript source (50 files)
 ├── index.ts                  # Express server + endpoints + landing page
-├── config.ts                 # Zod-validated env config (22 vars)
+├── config.ts                 # Zod-validated env config (22 vars) + .env loader
 ├── feature-flags.ts          # 13 feature flags (4 categories)
 ├── foundry-agent.ts          # Azure AI Foundry (12 function tools)
-├── agui-handler.ts           # AG-UI SSE streaming
+├── copilot-sdk.ts            # GitHub Copilot SDK (12 skills as custom tools)
+├── agui-handler.ts           # AG-UI SSE streaming + local demo mode
 ├── runtime.ts                # Runtime singletons
 ├── skills/                   # 8 browser skills + registry (9 files)
 ├── security/                 # 5-layer pipeline (7 files)
