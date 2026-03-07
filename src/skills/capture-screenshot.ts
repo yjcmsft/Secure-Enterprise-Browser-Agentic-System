@@ -7,15 +7,24 @@ export async function captureScreenshot(
 ): Promise<SkillResult> {
   const startedAt = Date.now();
   const selector = typeof params.selector === "string" ? params.selector : undefined;
+  const url = typeof params.url === "string" ? params.url : undefined;
 
   const secured = await runtime.securityGate.executeWithSecurity(
     "capture_screenshot",
     params,
     context,
     async () => {
-      const page = sessionManager.getPage(context.sessionId);
+      let page = sessionManager.getPage(context.sessionId);
+
+      // If no active session but URL provided, create one and navigate
+      if (!page && url) {
+        const session = await sessionManager.getOrCreateSession(context.userId, context.sessionId);
+        await session.page.goto(url, { waitUntil: "domcontentloaded", timeout: 30_000 });
+        page = session.page;
+      }
+
       if (!page) {
-        throw new Error("No active browser session. Call navigate_page first.");
+        throw new Error("No active browser session. Call navigate_page first or provide a URL.");
       }
 
       let screenshot: Buffer;
