@@ -105,50 +105,33 @@ npm start                         # http://localhost:3000
 
 ## 🖥️ Try It Locally
 
-**Interactive Demo UI:** Open [http://localhost:3000/demo](http://localhost:3000/demo) for the full chat UI with skills panel, workflow execution, and AG-UI streaming.
+**Interactive Demo UI:** [http://localhost:3000/demo](http://localhost:3000/demo) — chat UI with skills panel, workflow execution, AG-UI streaming, and SEC EDGAR comparison.
 
 ```bash
-# Health check
-curl http://localhost:3000/health
+curl http://localhost:3000/health                           # Health check
 
-# Navigate to a page
 curl -X POST http://localhost:3000/api/skills/navigate_page \
   -H "Content-Type: application/json" \
   -d '{"userId":"demo","sessionId":"s1","params":{"url":"https://learn.microsoft.com"}}'
 
-# Extract content
-curl -X POST http://localhost:3000/api/skills/extract_content \
-  -H "Content-Type: application/json" \
-  -d '{"userId":"demo","sessionId":"s1","params":{"url":"https://learn.microsoft.com","mode":"text"}}'
-
-# Compare SEC filings (AAPL vs MSFT via EDGAR XBRL API)
 curl -X POST http://localhost:3000/api/skills/compare_data \
   -H "Content-Type: application/json" \
   -d '{"userId":"demo","sessionId":"s1","params":{"urls":["https://www.sec.gov/cgi-bin/browse-edgar?CIK=AAPL","https://www.sec.gov/cgi-bin/browse-edgar?CIK=MSFT"],"mode":"all"}}'
 
-# Multi-step workflow
 curl -X POST http://localhost:3000/api/workflow \
   -H "Content-Type: application/json" \
   -d '{"userId":"demo","sessionId":"s1","prompt":"Navigate to learn.microsoft.com and extract the text"}'
 
-# AG-UI streaming (CopilotKit-compatible SSE)
-# Works in local demo mode without Azure AI Foundry — executes skills locally
 curl -X POST http://localhost:3000/api/agui/stream \
   -H "Content-Type: application/json" \
   -d '{"prompt":"Extract the title from learn.microsoft.com","userId":"demo","sessionId":"s1"}'
 
-# GitHub Copilot SDK agent (requires Copilot CLI + GH_TOKEN)
 curl -X POST http://localhost:3000/api/copilot \
   -H "Content-Type: application/json" \
   -d '{"prompt":"Navigate to learn.microsoft.com and extract the title","userId":"demo","sessionId":"s1"}'
 ```
 
-**CopilotKit frontend:**
-```typescript
-const { messages, sendMessage } = useAgent({
-  endpoint: "http://localhost:3000/api/agui/stream",
-});
-```
+**Endpoints:** `/api/skills/:name` · `/api/workflow` · `/api/agui/stream` (SSE) · `/api/copilot` · `/api/approve/:id` · `/health` · `/ready` · `/api/features`
 
 **Request correlation:** Pass `x-request-id` header → returned in response + traced in Application Insights.
 
@@ -206,30 +189,10 @@ Any numeric CIK also works (e.g., `320193` for Apple).
 
 ## 🏗️ Architecture
 
-```mermaid
-flowchart TB
-    subgraph Frontend["🖥️ CopilotKit / AG-UI"]
-        UI["React UI"] --> SSE["SSE Stream"]
-    end
-    subgraph Azure["☁️ Azure"]
-        CA["Container Apps"] --> Foundry["AI Foundry\n(GPT-4o)"]
-        CA --> CopilotSDK["GitHub Copilot SDK\n(@github/copilot-sdk)"]
-        CA --> Entra["Entra ID"]
-        CA --> KV["Key Vault"]
-        CA --> Cosmos["Cosmos DB"]
-        CA --> AI["Content Safety"]
-        CA --> Insights["App Insights"]
-        CA --> Graph["Graph API\n→ Teams"]
-    end
-    SSE --> CA
-    classDef azure fill:#E8EAF6,stroke:#283593
-    class CA,Foundry,Entra,KV,Cosmos,AI,Insights,Graph azure
-```
-
 | Service | Role |
 |---|---|
 | **Azure AI Foundry** | Agent lifecycle, 12 function tools, thread management |
-| **[GitHub Copilot SDK](https://github.com/github/copilot-sdk)** | Alternative agent runtime, 12 custom tools via `defineTool()`, BYOK with Azure OpenAI |
+| **[GitHub Copilot SDK](https://github.com/github/copilot-sdk)** | Alternative agent runtime, 12 custom tools, BYOK |
 | **Azure OpenAI** | GPT-4o for planning + generation |
 | **Entra ID** | SSO, RBAC, per-skill token delegation |
 | **Container Apps** | Auto-scaling runtime (0→20 replicas) |
@@ -261,16 +224,7 @@ Request → Entra ID → URL Allowlist → Content Safety (input)
 
 ## 🎛️ Feature Flags
 
-The agent supports 13 runtime feature flags across 4 categories, configurable via `feature-flags.txt` and exposed at `GET /api/features`:
-
-| Category | Flags | Default |
-|---|---|---|
-| **Security** | `url_allowlist`, `content_safety`, `approval_gate`, `pii_redaction`, `audit_logging` | All `true` |
-| **Browser** | `dual_path_routing`, `api_discovery`, `bot_detection_fallback` | All `true` |
-| **Analytics** | `fabric_analytics`, `work_iq_metrics` | `false` (opt-in) |
-| **Agent** | `agui_streaming`, `workflow_orchestration`, `screenshot_capture` | All `true` |
-
-Each security pipeline step is gated by its corresponding flag — disable any layer independently without code changes.
+13 runtime flags across 4 categories (Security, Browser, Analytics, Agent), configurable via `feature-flags.txt` and exposed at `GET /api/features`. Each security pipeline step is independently toggleable.
 
 ---
 
@@ -285,78 +239,33 @@ Browser module: 100% across all metrics. Run `npm run test:coverage` for the ful
 ## 📂 Repository Structure
 
 ```
-src/                          # TypeScript source (50 files)
-├── index.ts                  # Express server + endpoints + landing page
-├── config.ts                 # Zod-validated env config (22 vars) + .env loader
-├── feature-flags.ts          # 13 feature flags (4 categories)
+src/                          # 50 TypeScript source files
+├── index.ts                  # Express server + endpoints
 ├── foundry-agent.ts          # Azure AI Foundry (12 function tools)
-├── copilot-sdk.ts            # GitHub Copilot SDK (12 skills as custom tools)
+├── copilot-sdk.ts            # GitHub Copilot SDK (12 custom tools)
 ├── agui-handler.ts           # AG-UI SSE streaming + local demo mode
-├── runtime.ts                # Runtime singletons
-├── skills/                   # 8 browser skills + registry (9 files)
-├── security/                 # 5-layer pipeline (7 files)
-├── api/                      # Dual-path + bot-detection + SEC EDGAR (7 files)
-│   ├── dual-path-router.ts   # API-first routing with known providers
-│   ├── bot-detector.ts       # Bot/CAPTCHA detection (SEC, Cloudflare, etc.)
-│   ├── sec-edgar-connector.ts # SEC EDGAR XBRL API (data.sec.gov)
-│   ├── rest-connector.ts     # REST with retry + backoff
-│   ├── graphql-connector.ts  # GraphQL with retry + backoff
-│   ├── schema-discovery.ts   # OpenAPI/Swagger probing + cache
-│   └── response-normalizer.ts
-├── browser/                  # Playwright pool + DOM parser (4 files)
-├── graph/                    # Teams, Calendar, Cards, Work Patterns (5 files)
-├── fabric/                   # Fabric Lakehouse + Work IQ (4 files)
-├── orchestrator/             # Task planner + tool router (3 files)
-└── types/                    # TypeScript type definitions (4 files)
+├── config.ts                 # Zod config + .env loader
+├── skills/                   # 8 browser skills + registry
+├── security/                 # 5-layer pipeline (7 modules)
+├── api/                      # Dual-path + bot-detection + SEC EDGAR
+├── browser/                  # Playwright pool + DOM parser
+├── graph/                    # Teams, Calendar, Cards, Work Patterns
+├── fabric/                   # Fabric Lakehouse + Work IQ
+└── orchestrator/             # Task planner + tool router
 
-frontend/                     # Interactive demo UI (chat + SEC compare)
-infra/                        # Bicep IaC (8 modules)
-├── main.bicep                # Root template
-├── modules/                  # OpenAI, Cosmos, KV, ACR, Container Apps...
-└── parameters/               # dev / staging / prod
-
-scripts/                      # Deployment & demo scripts
-├── deploy.ps1                # Production deployment
-├── demo.ps1                  # Interactive demo (6 scenarios)
-├── customer-demo.ps1         # Customer-facing demo (5 use cases)
-└── setup-azure-oidc.*        # GitHub Actions OIDC setup (PS1 + Bash)
-
+frontend/                     # Interactive demo UI
+infra/                        # Bicep IaC (8 modules, dev/staging/prod)
+scripts/                      # Deploy, demo, OIDC setup
 tests/                        # 456 tests across 54 files
-├── unit/                     # 46 files · component isolation
-│   └── api/                  # bot-detector, sec-edgar-connector, connectors...
-├── integration/              # 4 files · cross-module flows
-└── e2e/                      # 1 file · smoke tests
-
 docs/adr/                     # 6 Architecture Decision Records
-.github/workflows/            # CI/CD: test → staging → production
 app-package/                  # Azure AI Foundry agent manifest
 ```
 
 ---
 
-## 📐 Architecture Decision Records
+##  Documentation
 
-| ADR | Decision | Why |
-|-----|----------|-----|
-| [001](./docs/adr/001-foundry-over-semantic-kernel.md) | Foundry over Semantic Kernel | Thread management + governance built in |
-| [002](./docs/adr/002-ag-ui-streaming-protocol.md) | AG-UI for streaming | Open standard, CopilotKit-compatible |
-| [003](./docs/adr/003-dual-path-api-dom.md) | API-first, DOM-fallback | 10x reliability for API-enabled apps |
-| [004](./docs/adr/004-security-pipeline-layered.md) | 5-layer security pipeline | Defense-in-depth, each layer independent |
-| [005](./docs/adr/005-fabric-analytics-integration.md) | Fabric for analytics | Lakehouse + Work IQ metrics |
-| [006](./docs/adr/006-bicep-iac-over-terraform.md) | Bicep over Terraform | Azure-native, stateless, `azd` built-in |
-
----
-
-## 📚 Documentation
-
-| Document | What's inside |
-|---|---|
-| [ARCHITECTURE.md](./ARCHITECTURE.md) | Full diagrams, auth flows, Foundry/Fabric integration, 5 worked examples |
-| [agents.md](./agents.md) | Agent types, AG-UI protocol, lifecycle, Entra ID auth |
-| [skills.md](./skills.md) | 12 skill definitions, security classification, Graph skills |
-| [CHANGELOG.md](./CHANGELOG.md) | Version history |
-| [docs/CHANGELOG.md](./docs/CHANGELOG.md) | Detailed changelog with all updates |
-| [docs/adr/](./docs/adr/) | 6 ADRs — the "why" behind every major choice |
+[ARCHITECTURE.md](./ARCHITECTURE.md) · [agents.md](./agents.md) · [skills.md](./skills.md) · [CHANGELOG.md](./CHANGELOG.md) · [docs/CHANGELOG.md](./docs/CHANGELOG.md) · [docs/adr/](./docs/adr/)
 
 ---
 
