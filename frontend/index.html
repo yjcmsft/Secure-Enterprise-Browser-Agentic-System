@@ -100,9 +100,9 @@
       <div class="skill-name">discover_apis</div>
       <div class="skill-desc">Probe for REST/GraphQL APIs</div>
     </div>
-    <div class="skill-btn" onclick="runSkill('capture_screenshot', {})">
+    <div class="skill-btn" onclick="runSkill('capture_screenshot', {url: prompt('Enter URL to screenshot:', 'https://learn.microsoft.com')})">
       <div class="skill-name">capture_screenshot</div>
-      <div class="skill-desc">Screenshot current page</div>
+      <div class="skill-desc">Screenshot a page (enter URL)</div>
     </div>
     <div class="skill-btn" onclick="runSkill('compare_data', {urls: ['https://learn.microsoft.com/azure','https://learn.microsoft.com/dotnet'], mode: 'text'})">
       <div class="skill-name">compare_data</div>
@@ -132,6 +132,7 @@ const API = 'http://localhost:3000';
 const messagesEl = document.getElementById('messages');
 const promptEl = document.getElementById('prompt');
 const sendBtn = document.getElementById('send-btn');
+const SESSION_ID = 'ui-session-' + Math.random().toString(36).slice(2, 8);
 
 function addMessage(type, label, content, extra = '') {
   const div = document.createElement('div');
@@ -198,13 +199,18 @@ async function runSkill(name, params) {
     const start = Date.now();
     const data = await callApi('POST', `/api/skills/${name}`, {
       userId: 'demo-user',
-      sessionId: `ui-${Date.now()}`,
+      sessionId: SESSION_ID,
       params: params || {}
     });
     const elapsed = Date.now() - start;
     
     if (data.success) {
-      addJsonMessage('agent', `${name} ✅`, data.data || data, elapsed);
+      // Show screenshot as image if present
+      if (data.data && data.data.imageBase64) {
+        addMessage('agent', `${name} \u2705`, `<img src="data:image/png;base64,${data.data.imageBase64}" style="max-width:100%;border-radius:8px;margin-top:6px;">`, `${elapsed}ms`);
+      } else {
+        addJsonMessage('agent', `${name} \u2705`, data.data || data, elapsed);
+      }
     } else {
       addJsonMessage('error', `${name} ❌`, data, elapsed);
     }
@@ -225,7 +231,7 @@ async function runWorkflow(prompt) {
     const start = Date.now();
     const data = await callApi('POST', '/api/workflow', {
       userId: 'demo-user',
-      sessionId: `wf-${Date.now()}`,
+      sessionId: SESSION_ID,
       prompt: prompt
     });
     const elapsed = Date.now() - start;
