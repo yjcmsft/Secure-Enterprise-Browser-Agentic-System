@@ -38,14 +38,20 @@ const parsed = envSchema.parse(process.env);
  * Load URL allowlist patterns.
  * Priority: url-allowlist.txt file > ALLOWED_URL_PATTERNS env var
  * File format: one pattern per line, # comments, empty lines ignored.
+ * Set enabled=false in the file to disable the allowlist entirely.
  */
 function loadAllowlistPatterns(): string[] {
   const filePath = resolve(process.cwd(), "url-allowlist.txt");
   if (existsSync(filePath)) {
     const lines = readFileSync(filePath, "utf-8").split("\n");
+    // Check for enabled=false toggle
+    const enabledLine = lines.find((l) => l.trim().startsWith("enabled="));
+    if (enabledLine && enabledLine.trim().toLowerCase() === "enabled=false") {
+      return ["*"]; // Allow all URLs
+    }
     const patterns = lines
       .map((line) => line.trim())
-      .filter((line) => line.length > 0 && !line.startsWith("#"));
+      .filter((line) => line.length > 0 && !line.startsWith("#") && !line.startsWith("enabled="));
     if (patterns.length > 0) return patterns;
   }
   // Fallback to env var

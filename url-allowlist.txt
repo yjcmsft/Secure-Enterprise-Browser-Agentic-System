@@ -2,6 +2,10 @@
 # Supports wildcards: * matches any subdomain or path segment
 # Lines starting with # are comments
 # Empty lines are ignored
+#
+# Set enabled=false to disable the allowlist (allow all URLs)
+# Set enabled=true to enforce the allowlist
+enabled=true
 
 # Microsoft properties
 https://*.microsoft.com/*
@@ -16,6 +20,12 @@ https://www.sec.gov/*
 # Developer tools
 https://*.github.com/*
 https://*.stackoverflow.com/*
+
+# Investor Relations / Annual Reports
+https://investor.apple.com/*
+https://abc.xyz/*
+https://*.wsj.com/*
+https://*.yahoo.com/*
 
 # Add your enterprise apps below:
 # https://your-servicenow.service-now.com/*
