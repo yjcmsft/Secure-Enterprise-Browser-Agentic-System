@@ -5,6 +5,7 @@
 An **Azure AI Foundry Agent** that securely navigates, reads, and acts across enterprise web apps — so your team doesn't have to.
 
 [![Deploy to Azure](https://aka.ms/deploytoazurebutton)](https://portal.azure.com)
+[![Live Staging](https://img.shields.io/badge/Staging-Live%20%E2%9C%93-brightgreen)](https://browser-agent-app.delightfulforest-1a6d4031.centralus.azurecontainerapps.io/health)
 [![Built with Azure AI Foundry](https://img.shields.io/badge/Built%20with-Azure%20AI%20Foundry-blue)](https://azure.microsoft.com/products/ai-foundry)
 [![AG-UI Protocol](https://img.shields.io/badge/Streaming-AG--UI%20Protocol-purple)](https://docs.ag-ui.com)
 [![GitHub Copilot SDK](https://img.shields.io/badge/Copilot%20SDK-v0.1.30-black)](https://github.com/github/copilot-sdk)
@@ -108,6 +109,8 @@ npm start                         # http://localhost:3000
 ## 🖥️ Try It Locally
 
 **Interactive Demo UI:** [http://localhost:3000/demo](http://localhost:3000/demo) — chat UI with skills panel, workflow execution, AG-UI streaming, and SEC EDGAR comparison.
+
+**Live staging:** [https://browser-agent-app.delightfulforest-1a6d4031.centralus.azurecontainerapps.io](https://browser-agent-app.delightfulforest-1a6d4031.centralus.azurecontainerapps.io/health)
 
 ```bash
 curl http://localhost:3000/health                           # Health check
