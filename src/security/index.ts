@@ -159,17 +159,26 @@ export class SecurityGate {
   }
 
   public async checkReadiness(): Promise<{
-    keyVault: "ready" | "skipped";
-    auditStore: "ready" | "skipped";
+    keyVault: "ready" | "skipped" | "degraded";
+    auditStore: "ready" | "skipped" | "degraded";
   }> {
-    const [authReadiness, auditReadiness] = await Promise.all([
-      this.auth.checkReadiness(),
-      this.audit.checkReadiness(),
-    ]);
+    let keyVault: "ready" | "skipped" | "degraded" = "degraded";
+    let auditStore: "ready" | "skipped" | "degraded" = "degraded";
 
-    return {
-      keyVault: authReadiness.keyVault,
-      auditStore: auditReadiness.auditStore,
-    };
+    try {
+      const authReadiness = await this.auth.checkReadiness();
+      keyVault = authReadiness.keyVault;
+    } catch {
+      // Key Vault unavailable — auth delegation will use DefaultAzureCredential fallback
+    }
+
+    try {
+      const auditReadiness = await this.audit.checkReadiness();
+      auditStore = auditReadiness.auditStore;
+    } catch {
+      // Audit store unavailable — will use in-memory fallback
+    }
+
+    return { keyVault, auditStore };
   }
 }

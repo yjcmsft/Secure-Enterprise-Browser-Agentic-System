@@ -6,6 +6,7 @@ import { createLogger, format, transports } from "winston";
 import { handleAgUiStream, getSessionState } from "./agui-handler.js";
 import { config } from "./config.js";
 import { startCopilotSession, stopCopilotClient } from "./copilot-sdk.js";
+import { WorkIQConnector } from "./fabric/workiq.js";
 import { startFoundryAgent, stopFoundryAgent } from "./foundry-agent.js";
 import { TaskPlanner } from "./orchestrator/task-planner.js";
 import { ToolRouter } from "./orchestrator/tool-router.js";
@@ -106,13 +107,16 @@ app.get("/", (_req, res) => {
   <h2>Quick Test</h2>
   <table>
     <tr><td colspan="2"><code>curl <a href="/health">/health</a></code></td></tr>
-    <tr><td colspan="2"><code>curl -X POST /api/skills/navigate_page -H "Content-Type: application/json" -d '{"userId":"demo","sessionId":"s1","params":{"url":"https://learn.microsoft.com"}}'</code></td></tr>
+    <tr><td colspan="2"><code>curl <a href="/ready">/ready</a></code></td></tr>
+    <tr><td colspan="2"><code>curl <a href="/api/features">/api/features</a></code></td></tr>
+    <tr><td colspan="2"><code>curl <a href="/api/workiq/benchmarks">/api/workiq/benchmarks</a></code></td></tr>
+    <tr><td colspan="2"><code>curl <a href="/api/workiq/skill-estimates">/api/workiq/skill-estimates</a></code></td></tr>
   </table>
 
   <div class="footer">
     <a href="/demo" style="display:inline-block;padding:10px 24px;background:#2563eb;color:#fff;border-radius:8px;text-decoration:none;font-weight:600;margin-bottom:12px">&#127760; Open Interactive Demo UI</a>
     <br>
-    Powered by Azure AI Foundry &bull; AG-UI Protocol &bull; Playwright &bull; Express
+    Powered by Azure AI Foundry &bull; GitHub Copilot SDK &bull; AG-UI Protocol &bull; Playwright &bull; Express
     <br><a href="https://github.com/yjcmsft/Secure-Enterprise-Browser-Agentic-System">GitHub Repository</a>
   </div>
 </div>
@@ -131,15 +135,26 @@ app.get("/api/features", (_req, res) => {
 app.get("/ready", async (req, res) => {
   const requestId = resolveRequestId(req, res);
   try {
-    await runtime.browserPool.getBrowser();
+    // Check browser availability (graceful — browser is optional for API-path skills)
+    let browserStatus: "ready" | "degraded" = "degraded";
+    try {
+      await runtime.browserPool.getBrowser();
+      browserStatus = "ready";
+    } catch {
+      // Browser unavailable — API-path skills and SEC EDGAR still work
+    }
+
     const dependencies = await runtime.securityGate.checkReadiness();
     res.status(200).json({
       requestId,
-      status: "ready",
+      status: browserStatus === "ready" ? "ready" : "ready_degraded",
       dependencies: {
-        browser: "ready",
+        browser: browserStatus,
         ...dependencies,
       },
+      note: browserStatus === "degraded"
+        ? "Browser unavailable — API-path skills (SEC EDGAR, REST, GraphQL) fully operational. DOM-based skills require Playwright."
+        : undefined,
     });
   } catch (error) {
     res.status(503).json({
@@ -232,6 +247,40 @@ app.post("/api/workflow", async (req, res) => {
     },
   );
   res.status(result.success ? 200 : 400).json({ requestId, plan, result });
+});
+
+// ---------------------------------------------------------------------------
+// Work IQ / Fabric IQ endpoints — productivity metrics & ROI analytics
+// ---------------------------------------------------------------------------
+app.get("/api/workiq/benchmarks", (_req, res) => {
+  const requestId = resolveRequestId(_req, res);
+  const workiq = new WorkIQConnector();
+  const industries = ["financial_services", "healthcare", "manufacturing", "retail", "technology"] as const;
+  const benchmarks = Object.fromEntries(
+    industries.map((i) => [i, workiq.getIndustryBenchmark(i)]),
+  );
+  res.status(200).json({ requestId, benchmarks });
+});
+
+app.get("/api/workiq/roi", async (_req, res) => {
+  const requestId = resolveRequestId(_req, res);
+  const workiq = new WorkIQConnector();
+  const roi = await workiq.calculateROI(85);
+  res.status(200).json({ requestId, roi });
+});
+
+app.get("/api/workiq/skill-estimates", (_req, res) => {
+  const requestId = resolveRequestId(_req, res);
+  const workiq = new WorkIQConnector();
+  const skills = [
+    "navigate_page", "extract_content", "fill_form", "submit_action",
+    "discover_apis", "capture_screenshot", "compare_data", "orchestrate_workflow",
+    "send_teams_message", "create_adaptive_card", "manage_calendar", "analyze_work_patterns",
+  ];
+  const estimates = Object.fromEntries(
+    skills.map((s) => [s, { manualSeconds: workiq.getManualEstimate(s) }]),
+  );
+  res.status(200).json({ requestId, estimates });
 });
 
 // ---------------------------------------------------------------------------

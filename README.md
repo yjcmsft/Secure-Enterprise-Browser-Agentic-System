@@ -134,9 +134,13 @@ curl -X POST http://localhost:3000/api/agui/stream \
 curl -X POST http://localhost:3000/api/copilot \
   -H "Content-Type: application/json" \
   -d '{"prompt":"Navigate to learn.microsoft.com and extract the title","userId":"demo","sessionId":"s1"}'
+
+curl http://localhost:3000/api/workiq/benchmarks              # Work IQ: industry benchmarks
+curl http://localhost:3000/api/workiq/roi                     # Work IQ: ROI calculation
+curl http://localhost:3000/api/workiq/skill-estimates          # Work IQ: per-skill time estimates
 ```
 
-**Endpoints:** `/api/skills/:name` · `/api/workflow` · `/api/agui/stream` (SSE) · `/api/copilot` · `/api/approve/:id` · `/health` · `/ready` · `/api/features`
+**Endpoints:** `/api/skills/:name` · `/api/workflow` · `/api/agui/stream` (SSE) · `/api/copilot` · `/api/workiq/*` · `/api/approve/:id` · `/health` · `/ready` · `/api/features`
 
 **Request correlation:** Pass `x-request-id` header → returned in response + traced in Application Insights.
 
