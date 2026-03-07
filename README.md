@@ -44,9 +44,7 @@ An **Azure AI Foundry Agent** that securely navigates, reads, and acts across en
 
 ---
 
-## 💰 Enterprise ROI & Industry Templates
-
-### Measured ROI
+## 💰 Enterprise ROI
 
 | Metric | Value |
 |---|---|
@@ -56,42 +54,7 @@ An **Azure AI Foundry Agent** that securely navigates, reads, and acts across en
 | **Deployment time** | <10 minutes (Bicep IaC + `azd up`) |
 | **Onboarding cost** | 1 natural language prompt replaces 7-app training |
 
-### Industry Benchmarks (built into Work IQ)
-
-The agent includes industry-specific productivity benchmarks via `WorkIQConnector.getIndustryBenchmark()`:
-
-| Industry | Workflows/Day | Minutes Saved/Workflow | Annual FTE Saved | Annual Cost Saved |
-|---|---|---|---|---|
-| **Financial Services** | 150 | 12 | 3.75 FTE | $318,750 |
-| **Healthcare** | 80 | 18 | 3.00 FTE | $255,000 |
-| **Manufacturing** | 60 | 15 | 1.88 FTE | $159,375 |
-| **Retail** | 200 | 8 | 3.33 FTE | $283,333 |
-| **Technology** | 120 | 10 | 2.50 FTE | $212,500 |
-
-### Reusable Across Verticals
-
-The skill-based architecture means **zero code changes** to adapt across industries:
-
-| Scenario | Skills Used | Industry |
-|---|---|---|
-| SEC filing extraction + board brief | `navigate_page` → `extract_content` → `compare_data` → `send_teams_message` | Financial Services |
-| Patient record lookup + appointment | `navigate_page` → `extract_content` → `manage_calendar` | Healthcare |
-| Supplier order tracking + alerts | `navigate_page` → `extract_content` → `create_adaptive_card` | Manufacturing |
-| Competitor price monitoring | `navigate_page` → `compare_data` → `orchestrate_workflow` | Retail |
-| Incident response + stakeholder notify | `navigate_page` → `extract_content` → `submit_action` → `send_teams_message` | Technology |
-
-### Multi-Tenant Deployment Model
-
-```
-Enterprise Tenant (Azure Entra ID)
-├── Staging    (rg-browser-agent-staging)   ← PR previews
-├── Production (rg-browser-agent-prod)      ← live traffic
-└── Per-customer isolation via:
-    ├── Session scoping (userId + sessionId)
-    ├── Per-skill token delegation (12 distinct scopes)
-    ├── URL allowlist per tenant
-    └── Cosmos DB partition key = tenantId
-```
+Industry-specific benchmarks built into Work IQ: Financial Services, Healthcare, Manufacturing, Retail, Technology — see `WorkIQConnector.getIndustryBenchmark()`.
 
 ---
 
@@ -304,17 +267,9 @@ Each security pipeline step is gated by its corresponding flag — disable any l
 
 ## 🧪 Test Coverage
 
-| Module | Stmts | Branches | Functions | Lines |
-|---|---|---|---|---|
-| **src (core)** | 99.13% | 91.83% | 100% | 100% |
-| **src/api** | 92.55% | 92.85% | 92.85% | 92.3% |
-| **src/browser** | 100% | 100% | 100% | 100% |
-| **src/fabric** | 91.26% | 86.44% | 95.65% | 91.91% |
-| **src/graph** | 97.22% | 90.54% | 95.23% | 97.14% |
-| **src/orchestrator** | 64.86% | 76.38% | 63.63% | 64.78% |
-| **src/security** | 94.53% | 86.58% | 100% | 94.47% |
-| **src/skills** | 95.17% | 88.77% | 90.47% | 95.83% |
-| **TOTAL** | **92.88%** | **87.62%** | **94.85%** | **93.15%** |
+**456 tests** across 54 files · **92.88% statements** · 87.62% branches · 94.85% functions · 93.15% lines
+
+Browser module: 100% across all metrics. Run `npm run test:coverage` for the full report.
 
 ---
 
@@ -399,116 +354,21 @@ app-package/                  # Azure AI Foundry agent manifest
 
 ### ✅ What works well
 
-**1. Function tool definitions are ergonomic and type-safe**
-
-```typescript
-// Defining 12 skills as FunctionToolDefinition[] is clean:
-const functionTools: FunctionToolDefinition[] = [
-  {
-    type: "function",
-    function: {
-      name: "navigate_page",
-      description: "Navigate to a URL in the enterprise browser",
-      parameters: { type: "object", properties: { url: { type: "string" } }, required: ["url"] },
-    },
-  },
-  // ... 11 more skills — JSON Schema "just works"
-];
-```
-
-**2. Persistent threads eliminate state management**
-
-```typescript
-// Thread isolation per user — no manual context tracking needed:
-const threadId = await createThread();
-await client.agents.messages.create(threadId, "user", prompt);
-const run = await client.agents.runs.create(threadId, agentId);
-// Thread automatically remembers all previous messages
-```
-
-**3. AG-UI event model maps perfectly to agentic UIs**
-
-```typescript
-// 17 event types give full visibility into agent execution:
-emit({ type: EventType.TOOL_CALL_START, toolCallId, toolCallName: "navigate_page" });
-emit({ type: EventType.TOOL_CALL_ARGS, toolCallId, delta: '{"url":"..."}' });
-emit({ type: EventType.TOOL_CALL_END, toolCallId, result: toolResult });
-emit({ type: EventType.STATE_SNAPSHOT, snapshot: { lastSkill: "navigate_page" } });
-```
-
-**4. CopilotKit interop is zero-effort**
-
-```typescript
-// Frontend consumes our SSE stream with one line:
-const { messages, sendMessage } = useAgent({
-  endpoint: "https://your-app.azurecontainerapps.io/api/agui/stream",
-});
-```
+1. **Function tool definitions** — Defining 12 skills as `FunctionToolDefinition[]` with JSON Schema is clean and type-safe.
+2. **Persistent threads** — Thread isolation per user eliminates manual context tracking.
+3. **AG-UI event model** — 17 event types map perfectly to agentic UIs (tool progress, state sync, message streaming).
+4. **CopilotKit interop** — Frontend consumes SSE stream with one `useAgent()` hook call.
 
 ### 🔧 Opportunities for improvement
 
-**1. Streaming runs (highest impact)**
-
-Today we poll `getRun()` in a loop, adding 500ms–1s latency per poll cycle:
-
-```typescript
-// Current: polling loop (our agui-handler.ts, line 120)
-while (currentRun.status === "queued" || currentRun.status === "in_progress") {
-  await new Promise((r) => setTimeout(r, 500));
-  currentRun = await client.agents.runs.get(threadId, currentRun.id);
-}
-// Desired: native SSE stream (like OpenAI's streaming API)
-// const stream = await client.agents.runs.createStream(threadId, agentId);
-// for await (const event of stream) { emit(event); }
-```
-
-*Impact: Would eliminate our entire polling loop and reduce AG-UI bridge from ~40 lines to ~10.*
-
-**2. Tool call batching**
-
-When the agent calls 3 tools in parallel, we need 3 separate `submitToolOutputs`:
-
-```typescript
-// Current: one call per tool output
-for (const toolCall of toolCalls) {
-  const result = await executeToolCall(toolCall.function.name, args);
-  toolOutputs.push({ toolCallId: toolCall.id, output: result });
-}
-await client.agents.runs.submitToolOutputs(threadId, run.id, toolOutputs);
-// This works, but a batch API for the execution loop would reduce round-trips
-```
-
-**3. AG-UI STATE_DELTA support**
-
-`STATE_SNAPSHOT` sends full state on every update. For agents with large state (our agent tracks `currentUrl`, `lastSkill`, `workflowProgress`, `approvalPending`), JSON Patch deltas would cut payload by ~80%:
-
-```typescript
-// Current: full snapshot every time
-emit({ type: EventType.STATE_SNAPSHOT, snapshot: fullState }); // ~500 bytes
-// Desired: delta only
-// emit({ type: EventType.STATE_DELTA, delta: [{ op: "replace", path: "/lastSkill", value: "extract_content" }] }); // ~80 bytes
-```
-
-**4. TypeScript generics for tool results**
-
-```typescript
-// Current: requires cast for complex scenarios
-const run = await client.agents.runs.create(threadId, agentId) as unknown as ThreadRun;
-// Desired: generic inference
-// const run = await client.agents.runs.create<ThreadRun>(threadId, agentId);
-```
+1. **Streaming runs** (highest impact) — Native SSE from `createStream()` would eliminate our 500ms polling loop and reduce the AG-UI bridge from ~40 lines to ~10.
+2. **Tool call batching** — A batch `submitToolOutputs` API for parallel tool calls would reduce round-trips.
+3. **AG-UI STATE_DELTA** — JSON Patch deltas instead of full `STATE_SNAPSHOT` would cut payload ~80%.
+4. **TypeScript generics** — Generic inference on `runs.create<ThreadRun>()` would eliminate type casts.
 
 ### 💡 Stack Recommendation
 
-**Azure AI Foundry Agent Service + AG-UI + CopilotKit** is the most ergonomic stack we found for enterprise agents with real-time UIs:
-
-| Layer | Role | Replaceable? |
-|---|---|---|
-| **Azure AI Foundry** | Orchestration + governance + compliance | Could swap for Semantic Kernel (but lose managed threads) |
-| **AG-UI Protocol** | Streaming standard (17 event types) | Could use raw SSE (but lose tool visibility) |
-| **CopilotKit** | React components + `useAgent` hook | Could use any AG-UI-compatible frontend |
-
-Each layer is cleanly separated. We swapped our frontend twice during development (custom React → CopilotKit) without touching the agent code.
+**Azure AI Foundry + AG-UI + CopilotKit** — most ergonomic stack for enterprise agents with real-time UIs. Each layer is cleanly separated; we swapped frontends twice without touching agent code.
 
 ---
 
