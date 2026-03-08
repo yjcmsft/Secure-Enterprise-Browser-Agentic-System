@@ -9,7 +9,7 @@ An **Azure AI Foundry Agent** that securely navigates, reads, and acts across en
 [![Built with Azure AI Foundry](https://img.shields.io/badge/Built%20with-Azure%20AI%20Foundry-blue)](https://azure.microsoft.com/products/ai-foundry)
 [![AG-UI Protocol](https://img.shields.io/badge/Streaming-AG--UI%20Protocol-purple)](https://docs.ag-ui.com)
 [![GitHub Copilot SDK](https://img.shields.io/badge/Copilot%20SDK-v0.1.30-black)](https://github.com/github/copilot-sdk)
-[![Tests](https://img.shields.io/badge/Tests-456%20passing-brightgreen)]()
+[![Tests](https://img.shields.io/badge/Tests-461%20passing-brightgreen)]()
 [![Coverage](https://img.shields.io/badge/Coverage-92.88%25-brightgreen)]()
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
 
@@ -76,7 +76,7 @@ Industry benchmarks built into Work IQ: Financial Services, Healthcare, Manufact
 | �📊 | **Fabric + Work IQ** | Lakehouse analytics + productivity metrics ("saved 4 hours") |
 | 🎛️ | **13 Feature Flags** | Fine-grained runtime control per security, browser, analytics, and agent features |
 | 🚀 | **One-Command Deploy** | Bicep IaC → GitHub Actions → staging → prod in <10 min |
-| 🧪 | **456 Tests · 92.88% Coverage** | 54 files · unit + integration + e2e |
+| 🧪 | **461 Tests · 92.88% Coverage** | 55 files · unit + integration + e2e |
 
 ---
 
@@ -86,7 +86,7 @@ Industry benchmarks built into Work IQ: Financial Services, Healthcare, Manufact
 git clone https://github.com/yjcmsft/Secure-Enterprise-Browser-Agentic-System.git
 cd Secure-Enterprise-Browser-Agentic-System
 npm install && npm run build
-npm test                          # 456 tests pass
+npm test                          # 461 tests pass
 
 # Deploy to Azure
 cp .env.example .env              # fill in Azure credentials
@@ -99,7 +99,7 @@ npm start                         # http://localhost:3000
 | Command | Description |
 |---|---|
 | `npm run dev` | Dev server with hot reload |
-| `npm test` | Run 456 tests (Vitest) |
+| `npm test` | Run 461 tests (Vitest) |
 | `npm run test:coverage` | Tests + coverage report |
 | `npm run lint` | Lint source + tests |
 | `npm run typecheck` | TypeScript check |
@@ -146,7 +146,21 @@ curl http://localhost:3000/api/workiq/skill-estimates          # Work IQ: per-sk
 
 ---
 
-## 📡 SEC EDGAR Dual-Path Demo
+## � Extensibility: Add Your Own Skills
+
+The skill-based architecture is designed for zero-friction customization. Add a new target application in 5 steps:
+
+1. **Create a skill handler** in `src/skills/` — use `SecurityGate.executeWithSecurity()` to get URL allowlist, content safety, and audit logging for free
+2. **Register it** in `src/skills/index.ts` and `src/types/skills.ts`
+3. **Add function tool definition** in `src/foundry-agent.ts` (Azure AI Foundry) and `src/copilot-sdk.ts` (Copilot SDK)
+4. **Add URL patterns** to `url-allowlist.txt`
+5. **Write tests** in `tests/unit/skills/`
+
+> 📝 Full guide with code examples: [CONTRIBUTING.md](./CONTRIBUTING.md#adding-a-new-skill)
+
+---
+
+## �📡 SEC EDGAR Dual-Path Demo
 
 The `compare_data` skill demonstrates the **dual-path strategy** in action. SEC EDGAR blocks automated browser access with a bot-detection page — exactly when the agent falls back to the XBRL REST API at `data.sec.gov`.
 
@@ -241,7 +255,7 @@ Request → Entra ID → URL Allowlist → Content Safety (input)
 
 ## 🧪 Test Coverage
 
-**456 tests** across 54 files · **92.88% statements** · 87.62% branches · 94.85% functions · 93.15% lines
+**461 tests** across 55 files · **92.88% statements** · 87.62% branches · 94.85% functions · 93.15% lines
 
 Browser module: 100% across all metrics. Run `npm run test:coverage` for the full report.
 
@@ -267,7 +281,7 @@ src/                          # 50 TypeScript source files
 frontend/                     # Interactive demo UI
 infra/                        # Bicep IaC (8 modules, dev/staging/prod)
 scripts/                      # Deploy, demo, OIDC setup
-tests/                        # 456 tests across 54 files
+tests/                        # 461 tests across 55 files
 docs/adr/                     # 6 Architecture Decision Records
 app-package/                  # Azure AI Foundry agent manifest
 ```
@@ -276,7 +290,7 @@ app-package/                  # Azure AI Foundry agent manifest
 
 ##  Documentation
 
-[ARCHITECTURE.md](./ARCHITECTURE.md) · [agents.md](./agents.md) · [skills.md](./skills.md) · [RESPONSIBLE_AI.md](./RESPONSIBLE_AI.md) · [CHANGELOG.md](./CHANGELOG.md) · [docs/customer-validation.md](./docs/customer-validation.md) · [docs/copilot-sdk-feedback.md](./docs/copilot-sdk-feedback.md) · [docs/adr/](./docs/adr/)
+[ARCHITECTURE.md](./ARCHITECTURE.md) · [agents.md](./agents.md) · [skills.md](./skills.md) · [RESPONSIBLE_AI.md](./RESPONSIBLE_AI.md) · [SECURITY.md](./SECURITY.md) · [CONTRIBUTING.md](./CONTRIBUTING.md) · [CHANGELOG.md](./CHANGELOG.md) · [docs/customer-validation.md](./docs/customer-validation.md) · [docs/copilot-sdk-feedback.md](./docs/copilot-sdk-feedback.md) · [docs/adr/](./docs/adr/)
 
 ---
 

@@ -29,11 +29,11 @@ api_discovery=true
 bot_detection_fallback=true
 
 # ── Analytics Features ──
-# Microsoft Fabric analytics pipeline (false = disable Fabric streaming)
-fabric_analytics=false
+# Microsoft Fabric analytics pipeline (true = enable for demo; disable if Fabric unavailable)
+fabric_analytics=true
 
-# Work IQ productivity metrics (false = skip productivity tracking)
-work_iq_metrics=false
+# Work IQ productivity metrics (true = enable for demo; disable in prod if Fabric unavailable)
+work_iq_metrics=true
 
 # ── Agent Features ──
 # AG-UI SSE streaming endpoint (false = disable /api/agui/stream)

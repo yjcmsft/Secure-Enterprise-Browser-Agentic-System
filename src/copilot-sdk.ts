@@ -238,7 +238,11 @@ Always explain what you're doing before invoking tools.`,
   const result = await session.sendAndWait({ prompt }, 120_000);
   const response = (result as { data?: { content?: string } })?.data?.content ?? "No response received.";
 
-  await (session as unknown as { disconnect(): Promise<void> }).disconnect().catch(() => {});
+  // Disconnect session if the method exists (SDK version dependent)
+  try {
+    const s = session as unknown as { disconnect?: () => Promise<void> };
+    if (typeof s.disconnect === "function") await s.disconnect();
+  } catch { /* session cleanup is best-effort */ }
 
   logger.info("copilot-sdk-session-complete", {
     sessionId,

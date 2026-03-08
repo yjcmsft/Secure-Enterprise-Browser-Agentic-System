@@ -1,4 +1,5 @@
 import express from "express";
+import helmet from "helmet";
 import rateLimit from "express-rate-limit";
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
@@ -27,10 +28,18 @@ const logger = createLogger({
 
 app.use(express.json({ limit: "2mb" }));
 
-// CORS — allow frontend to call API from different origin
+// HTTP security headers (helmet)
+app.use(helmet({
+  contentSecurityPolicy: false, // Disabled for landing page inline styles
+  crossOriginEmbedderPolicy: false,
+}));
+
+// CORS — configurable via CORS_ALLOWED_ORIGINS env var
+// Default: * (permissive for demo/dev). In production, set CORS_ALLOWED_ORIGINS to your frontend domain.
+const allowedOrigins = process.env.CORS_ALLOWED_ORIGINS ?? "*";
 app.use((_req, res, next) => {
-  res.header("Access-Control-Allow-Origin", "*");
-  res.header("Access-Control-Allow-Headers", "Content-Type, x-request-id");
+  res.header("Access-Control-Allow-Origin", allowedOrigins);
+  res.header("Access-Control-Allow-Headers", "Content-Type, x-request-id, Authorization");
   res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   if (_req.method === "OPTIONS") { res.sendStatus(200); return; }
   next();
@@ -89,7 +98,7 @@ app.get("/", (_req, res) => {
   <p class="tagline">One prompt. Seven apps. Three minutes. Board-ready.</p>
   <span class="badge b-blue">Azure AI Foundry</span>
   <span class="badge b-purple">AG-UI Streaming</span>
-  <span class="badge b-green">398 Tests Passing</span>
+  <span class="badge b-green">456 Tests Passing</span>
   <span class="badge b-yellow">12 Skills</span>
 
   <h2>API Endpoints</h2>
