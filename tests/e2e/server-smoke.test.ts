@@ -5,17 +5,15 @@ import { describe, expect, test, beforeAll, afterAll } from "vitest";
  * Verifies the deployed application works end-to-end.
  */
 
-let server: Awaited<ReturnType<typeof startServer>> | null = null;
 const BASE = "http://localhost:3099"; // Use non-default port to avoid conflicts
 
-async function startServer() {
+async function startServer(): Promise<void> {
   // Override port before importing
   process.env.PORT = "3099";
   process.env.NODE_ENV = "test";
-  const mod = await import("../../src/index.js");
+  await import("../../src/index.js");
   // The server starts automatically on import — give it a moment
   await new Promise((r) => setTimeout(r, 1000));
-  return mod;
 }
 
 async function fetchJson(path: string, options?: RequestInit) {
@@ -25,7 +23,7 @@ async function fetchJson(path: string, options?: RequestInit) {
 
 describe("E2E server smoke test", () => {
   beforeAll(async () => {
-    server = await startServer();
+    await startServer();
   }, 15000);
 
   afterAll(async () => {

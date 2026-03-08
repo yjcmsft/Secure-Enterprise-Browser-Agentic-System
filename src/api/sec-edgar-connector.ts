@@ -176,15 +176,7 @@ export async function resolveCikDynamic(query: string): Promise<string | null> {
 
   // Dynamic lookup via SEC EDGAR company search
   try {
-    const searchUrl = `https://efts.sec.gov/LATEST/search-index?q=${encodeURIComponent(query)}&dateRange=custom&startdt=2020-01-01&forms=10-K&from=0&size=1`;
-    const response = await axios.get<{
-      hits: { hits: Array<{ _source: { entity_name?: string; file_num?: string; display_names?: string[] } }> };
-    }>(searchUrl, {
-      timeout: 10_000,
-      headers: { "User-Agent": SEC_USER_AGENT, Accept: "application/json" },
-    });
-
-    // Also try the company tickers endpoint for ticker-based lookup
+    // Try the full-text search endpoint
     const tickerUrl = `https://efts.sec.gov/LATEST/search-index?q=%22${encodeURIComponent(query)}%22&forms=10-K&from=0&size=1`;
     const tickerResponse = await axios.get(tickerUrl, {
       timeout: 10_000,
