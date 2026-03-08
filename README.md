@@ -225,7 +225,7 @@ curl -X POST http://localhost:3000/api/skills/compare_data \
 | **Graph API** | Teams, Calendar, Adaptive Cards |
 | **App Insights** | OpenTelemetry traces + metrics via `@azure/monitor-opentelemetry` |
 
-> 📖 Full details: [ARCHITECTURE.md](./ARCHITECTURE.md)
+> 📖 Full details: [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md)
 
 ---
 
@@ -244,7 +244,7 @@ Request → Entra ID → URL Allowlist → Content Safety (input)
 | **Reliability** | API→DOM fallback · bot-detection auto-recovery · retry with backoff · health probes |
 | **Compliance** | SOC 2 · ISO 27001 · GDPR · HIPAA-eligible |
 
-> 📝 Full Responsible AI transparency card: [RESPONSIBLE_AI.md](./RESPONSIBLE_AI.md) — bias testing, content safety thresholds, human oversight protocols, limitations & known risks.
+> 📝 Full Responsible AI transparency card: [docs/RESPONSIBLE_AI.md](./docs/RESPONSIBLE_AI.md) — bias testing, content safety thresholds, human oversight protocols, limitations & known risks.
 
 ---
 
@@ -292,7 +292,7 @@ app-package/                  # Azure AI Foundry agent manifest
 
 ##  Documentation
 
-[ARCHITECTURE.md](./ARCHITECTURE.md) · [agents.md](./agents.md) · [skills.md](./skills.md) · [RESPONSIBLE_AI.md](./RESPONSIBLE_AI.md) · [SECURITY.md](./SECURITY.md) · [CONTRIBUTING.md](./CONTRIBUTING.md) · [CHANGELOG.md](./CHANGELOG.md) · [docs/customer-validation.md](./docs/customer-validation.md) · [docs/copilot-sdk-feedback.md](./docs/copilot-sdk-feedback.md) · [docs/adr/](./docs/adr/)
+[docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) · [docs/agents.md](./docs/agents.md) · [docs/skills.md](./docs/skills.md) · [docs/RESPONSIBLE_AI.md](./docs/RESPONSIBLE_AI.md) · [SECURITY.md](./SECURITY.md) · [CONTRIBUTING.md](./CONTRIBUTING.md) · [CHANGELOG.md](./CHANGELOG.md) · [docs/customer-validation.md](./docs/customer-validation.md) · [docs/copilot-sdk-feedback.md](./docs/copilot-sdk-feedback.md) · [docs/adr/](./docs/adr/)
 
 ---
 

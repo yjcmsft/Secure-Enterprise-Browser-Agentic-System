@@ -48,4 +48,4 @@ We follow [coordinated vulnerability disclosure](https://en.wikipedia.org/wiki/C
 
 ## Security Architecture
 
-See [RESPONSIBLE_AI.md](./RESPONSIBLE_AI.md) for the full 5-layer security pipeline, human oversight matrix, PII protection, and compliance alignment.
+See [docs/RESPONSIBLE_AI.md](./docs/RESPONSIBLE_AI.md) for the full 5-layer security pipeline, human oversight matrix, PII protection, and compliance alignment.

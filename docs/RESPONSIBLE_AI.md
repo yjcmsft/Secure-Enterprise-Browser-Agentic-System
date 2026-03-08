@@ -153,4 +153,4 @@ Audit logs are:
 
 - **Repository:** [github.com/yjcmsft/Secure-Enterprise-Browser-Agentic-System](https://github.com/yjcmsft/Secure-Enterprise-Browser-Agentic-System)
 - **Responsible AI questions:** File an issue with the `responsible-ai` label
-- **Security vulnerabilities:** See [SECURITY.md](./SECURITY.md) for responsible disclosure guidelines
+- **Security vulnerabilities:** See [SECURITY.md](../SECURITY.md) for responsible disclosure guidelines
