@@ -76,6 +76,8 @@ Industry benchmarks built into Work IQ: Financial Services, Healthcare, Manufact
 | �📊 | **Fabric + Work IQ** | Lakehouse analytics + productivity metrics ("saved 4 hours") |
 | 🎛️ | **13 Feature Flags** | Fine-grained runtime control per security, browser, analytics, and agent features |
 | 🚀 | **One-Command Deploy** | Bicep IaC → GitHub Actions → staging → prod in <10 min |
+| 🏢 | **Multi-Tenant SaaS** | Per-tenant URL allowlists, Cosmos DB partition isolation, tenant API |
+| 📊 | **OpenTelemetry** | Azure Monitor traces, metrics, and dependency tracking via `@azure/monitor-opentelemetry` |
 | 🧪 | **461 Tests · 92.88% Coverage** | 55 files · unit + integration + e2e |
 
 ---
@@ -140,7 +142,7 @@ curl http://localhost:3000/api/workiq/roi                     # Work IQ: ROI cal
 curl http://localhost:3000/api/workiq/skill-estimates          # Work IQ: per-skill time estimates
 ```
 
-**Endpoints:** `/api/skills/:name` · `/api/workflow` · `/api/agui/stream` (SSE) · `/api/copilot` · `/api/workiq/*` · `/api/approve/:id` · `/health` · `/ready` · `/api/features`
+**Endpoints:** `/api/skills/:name` · `/api/workflow` · `/api/agui/stream` (SSE) · `/api/copilot` · `/api/workiq/*` · `/api/tenants` · `/api/tenants/:id/check-url` · `/api/approve/:id` · `/health` · `/ready` · `/api/features`
 
 **Request correlation:** Pass `x-request-id` header → returned in response + traced in Application Insights.
 
@@ -193,11 +195,9 @@ curl -X POST http://localhost:3000/api/skills/compare_data \
   -d '{"userId":"demo","sessionId":"s1","params":{"urls":["https://www.sec.gov/cgi-bin/browse-edgar?CIK=AAPL","https://www.sec.gov/cgi-bin/browse-edgar?CIK=MSFT"],"mode":"all"}}'
 ```
 
-### Supported Tickers (pre-mapped CIK)
+### Supported Tickers
 
-`AAPL` · `MSFT` · `GOOGL` · `AMZN` · `META` · `TSLA` · `NVDA` · `JPM` · `V` · `JNJ` · `WMT` · `PG` · `UNH` · `MA` · `HD`
-
-Any numeric CIK also works (e.g., `320193` for Apple).
+`AAPL` · `MSFT` · `GOOGL` · `AMZN` · `META` · `TSLA` · `NVDA` · `JPM` · `V` · `JNJ` · `WMT` · `PG` · `UNH` · `MA` · `HD` + **any ticker or company name** via dynamic SEC EDGAR company search API (`efts.sec.gov`). Numeric CIKs also work.
 
 ### Bot-Detection Patterns Recognized
 

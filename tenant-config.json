@@ -1,0 +1,59 @@
+[
+  {
+    "tenantId": "contoso-finance",
+    "name": "Contoso Financial Services",
+    "allowedUrls": [
+      "https://*.microsoft.com/*",
+      "https://sec.gov/*",
+      "https://www.sec.gov/*",
+      "https://data.sec.gov/*",
+      "https://efts.sec.gov/*",
+      "https://contoso-servicenow.service-now.com/*",
+      "https://contoso.my.workday.com/*"
+    ],
+    "cosmosPartitionKey": "contoso-finance",
+    "maxConcurrency": 10,
+    "features": {
+      "browserAutomation": true,
+      "secEdgarApi": true,
+      "graphIntegration": true,
+      "fabricAnalytics": true
+    }
+  },
+  {
+    "tenantId": "northwind-tech",
+    "name": "Northwind Technology",
+    "allowedUrls": [
+      "https://*.microsoft.com/*",
+      "https://*.github.com/*",
+      "https://*.azure.com/*",
+      "https://northwind.atlassian.net/*",
+      "https://grafana.northwind.io/*"
+    ],
+    "cosmosPartitionKey": "northwind-tech",
+    "maxConcurrency": 5,
+    "features": {
+      "browserAutomation": true,
+      "secEdgarApi": false,
+      "graphIntegration": true,
+      "fabricAnalytics": false
+    }
+  },
+  {
+    "tenantId": "adventure-works",
+    "name": "Adventure Works Manufacturing",
+    "allowedUrls": [
+      "https://*.microsoft.com/*",
+      "https://aw-erp.adventureworks.com/*",
+      "https://aw-scm.adventureworks.com/*"
+    ],
+    "cosmosPartitionKey": "adventure-works",
+    "maxConcurrency": 3,
+    "features": {
+      "browserAutomation": true,
+      "secEdgarApi": false,
+      "graphIntegration": false,
+      "fabricAnalytics": false
+    }
+  }
+]

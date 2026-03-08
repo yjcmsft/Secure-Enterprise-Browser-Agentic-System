@@ -1,6 +1,21 @@
+import { useAzureMonitor } from "@azure/monitor-opentelemetry";
+import { trace } from "@opentelemetry/api";
 import express from "express";
 import helmet from "helmet";
 import rateLimit from "express-rate-limit";
+
+// ---------------------------------------------------------------------------
+// Azure Monitor OpenTelemetry — traces, metrics, and logs to Application Insights
+// Must be initialized before any other imports to instrument them properly.
+// ---------------------------------------------------------------------------
+if (process.env.APPLICATIONINSIGHTS_CONNECTION_STRING) {
+  useAzureMonitor({
+    azureMonitorExporterOptions: {
+      connectionString: process.env.APPLICATIONINSIGHTS_CONNECTION_STRING,
+    },
+  });
+}
+const tracer = trace.getTracer("browser-agent", "1.0.0");
 import { randomUUID } from "node:crypto";
 import { resolve } from "node:path";
 import { createLogger, format, transports } from "winston";
@@ -9,6 +24,7 @@ import { config } from "./config.js";
 import { startCopilotSession, stopCopilotClient } from "./copilot-sdk.js";
 import { WorkIQConnector } from "./fabric/workiq.js";
 import { startFoundryAgent, stopFoundryAgent } from "./foundry-agent.js";
+import { TenantManager } from "./security/tenant-manager.js";
 import { TaskPlanner } from "./orchestrator/task-planner.js";
 import { ToolRouter } from "./orchestrator/tool-router.js";
 import { runtime, sessionManager } from "./runtime.js";
@@ -188,6 +204,11 @@ app.post("/api/skills/:skillName", async (req, res) => {
     graphAccessToken?: string;
   };
 
+  // OpenTelemetry: trace skill execution
+  const span = tracer.startSpan(`skill.${skillName}`, {
+    attributes: { "skill.name": skillName, "user.id": userId, "session.id": sessionId, "request.id": requestId },
+  });
+
   try {
     const result = await toolRouter.run(skillName, params ?? {}, {
       userId: userId ?? "anonymous",
@@ -196,8 +217,14 @@ app.post("/api/skills/:skillName", async (req, res) => {
       requestId,
       graphAccessToken: req.body.graphAccessToken,
     });
+    span.setAttribute("skill.success", result.success);
+    span.setAttribute("skill.path", result.path ?? "unknown");
+    span.setAttribute("skill.durationMs", result.durationMs);
+    span.end();
     res.status(result.success ? 200 : 400).json({ requestId, ...result });
   } catch (error) {
+    span.recordException(error as Error);
+    span.end();
     const isKnownSecurityError = isSecurityError(error);
     logger.error("skill_execution_failed", {
       skillName,
@@ -256,6 +283,31 @@ app.post("/api/workflow", async (req, res) => {
     },
   );
   res.status(result.success ? 200 : 400).json({ requestId, plan, result });
+});
+
+// ---------------------------------------------------------------------------
+// Multi-Tenant endpoints — per-tenant URL allowlists + Cosmos partition isolation
+// ---------------------------------------------------------------------------
+const tenantManager = new TenantManager();
+
+app.get("/api/tenants", (_req, res) => {
+  const requestId = resolveRequestId(_req, res);
+  res.status(200).json({ requestId, tenants: tenantManager.listTenants() });
+});
+
+app.get("/api/tenants/:tenantId", (req, res) => {
+  const requestId = resolveRequestId(req, res);
+  const tenant = tenantManager.getTenant(req.params.tenantId);
+  res.status(200).json({ requestId, tenant });
+});
+
+app.get("/api/tenants/:tenantId/check-url", (req, res) => {
+  const requestId = resolveRequestId(req, res);
+  const url = req.query.url as string;
+  if (!url) { res.status(400).json({ requestId, error: "url query parameter required" }); return; }
+  const allowed = tenantManager.isUrlAllowed(req.params.tenantId, url);
+  const partitionKey = tenantManager.getPartitionKey(req.params.tenantId);
+  res.status(200).json({ requestId, tenantId: req.params.tenantId, url, allowed, cosmosPartitionKey: partitionKey });
 });
 
 // ---------------------------------------------------------------------------

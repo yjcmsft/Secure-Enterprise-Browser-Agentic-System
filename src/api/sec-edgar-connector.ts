@@ -143,6 +143,8 @@ export interface SecEdgarApiResult {
 
 /**
  * Resolve a ticker or CIK string to a zero-padded 10-digit CIK.
+ * First checks the local map, then falls back to SEC EDGAR company search API
+ * for dynamic resolution of unknown tickers.
  */
 export function resolveCik(tickerOrCik: string): string | null {
   const cleaned = tickerOrCik.trim().toUpperCase();
@@ -158,6 +160,72 @@ export function resolveCik(tickerOrCik: string): string | null {
   }
 
   return null;
+}
+
+/**
+ * Dynamically resolve a company name or unknown ticker to a CIK using
+ * SEC EDGAR's full-text search API at efts.sec.gov.
+ *
+ * This handles cases where the ticker isn't in the pre-mapped list.
+ * Example: resolveCikDynamic("Berkshire Hathaway") → "0001067983"
+ */
+export async function resolveCikDynamic(query: string): Promise<string | null> {
+  // Try static resolution first
+  const staticCik = resolveCik(query);
+  if (staticCik) return staticCik;
+
+  // Dynamic lookup via SEC EDGAR company search
+  try {
+    const searchUrl = `https://efts.sec.gov/LATEST/search-index?q=${encodeURIComponent(query)}&dateRange=custom&startdt=2020-01-01&forms=10-K&from=0&size=1`;
+    const response = await axios.get<{
+      hits: { hits: Array<{ _source: { entity_name?: string; file_num?: string; display_names?: string[] } }> };
+    }>(searchUrl, {
+      timeout: 10_000,
+      headers: { "User-Agent": SEC_USER_AGENT, Accept: "application/json" },
+    });
+
+    // Also try the company tickers endpoint for ticker-based lookup
+    const tickerUrl = `https://efts.sec.gov/LATEST/search-index?q=%22${encodeURIComponent(query)}%22&forms=10-K&from=0&size=1`;
+    const tickerResponse = await axios.get(tickerUrl, {
+      timeout: 10_000,
+      headers: { "User-Agent": SEC_USER_AGENT, Accept: "application/json" },
+    }).catch(() => null);
+
+    // Try company tickers JSON endpoint (most reliable for ticker lookup)
+    try {
+      const companyTickersResponse = await axios.get<Record<string, { cik_str: number; ticker: string; title: string }>>(
+        "https://www.sec.gov/files/company_tickers.json",
+        { timeout: 10_000, headers: { "User-Agent": SEC_USER_AGENT } },
+      );
+      const entries = Object.values(companyTickersResponse.data);
+      const match = entries.find(
+        (e) => e.ticker.toUpperCase() === query.toUpperCase() ||
+               e.title.toUpperCase().includes(query.toUpperCase()),
+      );
+      if (match) {
+        const cik = String(match.cik_str).padStart(10, "0");
+        logger.info("sec-edgar-dynamic-resolve", { query, cik, entity: match.title, source: "company_tickers" });
+        return cik;
+      }
+    } catch {
+      // company_tickers endpoint failed — continue with search results
+    }
+
+    // Fallback: parse search results for CIK
+    if (tickerResponse?.data?.hits?.hits?.[0]) {
+      const hit = tickerResponse.data.hits.hits[0];
+      const fileNum = hit._source?.file_num;
+      if (fileNum) {
+        logger.info("sec-edgar-dynamic-resolve", { query, fileNum, source: "search-index" });
+      }
+    }
+
+    logger.warn("sec-edgar-dynamic-resolve-failed", { query });
+    return null;
+  } catch (error) {
+    logger.warn("sec-edgar-dynamic-resolve-error", { query, error: (error as Error).message });
+    return null;
+  }
 }
 
 /**
@@ -233,9 +301,13 @@ export class SecEdgarConnector {
    * Returns the most recent annual (10-K) values for common financial concepts.
    */
   public async extractFinancialSummary(tickerOrCik: string): Promise<SecEdgarApiResult> {
-    const cik = resolveCik(tickerOrCik);
+    // Try static resolution first, then dynamic lookup via SEC EDGAR search
+    let cik = resolveCik(tickerOrCik);
     if (!cik) {
-      throw new Error(`Cannot resolve ticker/CIK: "${tickerOrCik}". Use a known ticker (e.g., AAPL, MSFT) or numeric CIK.`);
+      cik = await resolveCikDynamic(tickerOrCik);
+    }
+    if (!cik) {
+      throw new Error(`Cannot resolve ticker/CIK: "${tickerOrCik}". Use a ticker (e.g., AAPL, MSFT), numeric CIK, or company name.`);
     }
 
     const [facts, submissions] = await Promise.all([
