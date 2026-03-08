@@ -114,7 +114,7 @@ app.get("/", (_req, res) => {
   <p class="tagline">One prompt. Seven apps. Three minutes. Board-ready.</p>
   <span class="badge b-blue">Azure AI Foundry</span>
   <span class="badge b-purple">AG-UI Streaming</span>
-  <span class="badge b-green">456 Tests Passing</span>
+  <span class="badge b-green">461 Tests Passing</span>
   <span class="badge b-yellow">12 Skills</span>
 
   <h2>API Endpoints</h2>

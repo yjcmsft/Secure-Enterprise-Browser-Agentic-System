@@ -67,12 +67,12 @@ Industry benchmarks built into Work IQ: Financial Services, Healthcare, Manufact
 | | Feature | Why it matters |
 |---|---|---|
 | 🔀 | **Dual-Path Intelligence** | REST/GraphQL APIs first, Playwright DOM fallback — 10x more reliable |
-| �️ | **Bot-Detection Fallback** | Auto-detects SEC EDGAR / Cloudflare / CAPTCHA blocks → falls back to structured APIs |
+| 🛡️ | **Bot-Detection Fallback** | Auto-detects SEC EDGAR / Cloudflare / CAPTCHA blocks → falls back to structured APIs |
 | �🔒 | **Zero Trust Security** | 5-layer pipeline: Entra ID → URL allowlist → Content Safety → approval → audit |
 | 🤖 | **12 Agent Skills** | Navigate, extract, fill, submit, compare, workflow + Teams, Calendar, Cards |
 | 📡 | **AG-UI Streaming** | Real-time SSE → CopilotKit or any AG-UI frontend · local demo mode without Foundry |
 | ☁️ | **Azure AI Foundry** | Function tools + persistent threads + governance |
-| � | **[GitHub Copilot SDK](https://github.com/github/copilot-sdk)** | Alternative agent runtime via `@github/copilot-sdk` · 12 skills as custom tools · BYOK with Azure OpenAI |
+| 🐙 | **[GitHub Copilot SDK](https://github.com/github/copilot-sdk)** | Alternative agent runtime via `@github/copilot-sdk` · 11 skills as custom tools · BYOK with Azure OpenAI |
 | �📊 | **Fabric + Work IQ** | Lakehouse analytics + productivity metrics ("saved 4 hours") |
 | 🎛️ | **13 Feature Flags** | Fine-grained runtime control per security, browser, analytics, and agent features |
 | 🚀 | **One-Command Deploy** | Bicep IaC → GitHub Actions → staging → prod in <10 min |
@@ -290,7 +290,7 @@ app-package/                  # Azure AI Foundry agent manifest
 
 ---
 
-##  Documentation
+## 📚 Documentation
 
 [docs/ARCHITECTURE.md](./docs/ARCHITECTURE.md) · [docs/agents.md](./docs/agents.md) · [docs/skills.md](./docs/skills.md) · [docs/RESPONSIBLE_AI.md](./docs/RESPONSIBLE_AI.md) · [SECURITY.md](./SECURITY.md) · [CONTRIBUTING.md](./CONTRIBUTING.md) · [CHANGELOG.md](./CHANGELOG.md) · [docs/customer-validation.md](./docs/customer-validation.md) · [docs/copilot-sdk-feedback.md](./docs/copilot-sdk-feedback.md) · [docs/adr/](./docs/adr/)
 
