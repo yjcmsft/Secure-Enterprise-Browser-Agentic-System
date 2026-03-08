@@ -3,162 +3,61 @@
 ## System Diagram
 
 ```mermaid
-flowchart TB
-    subgraph UserLayer["👤 User Layer"]
-        Employee["Employee"]
-        CopilotChat["CopilotKit UI / CLI Interface\n(AG-UI SSE Stream)"]
+flowchart LR
+    subgraph UI["User / Copilot UI"]
+        direction TB
+        User["AG-UI Streaming"]
     end
 
-    subgraph AzureInfra["☁️ Azure Cloud Infrastructure"]
-        AOAI["Azure OpenAI Service\n(GPT-4o)"]
-        EntraID["Azure Entra ID\n(SSO + RBAC +\nConditional Access)"]
-        ContainerApps["Azure Container Apps\n(Agent Runtime)"]
-        KeyVault["Azure Key Vault\n(Secrets + Certs)"]
-        CosmosDB["Azure Cosmos DB\n(Audit Logs + State)"]
-        AppInsights["Application Insights\n(Distributed Tracing)"]
-        AzMonitor["Azure Monitor\n(Alerts + Dashboards)"]
-        ContentSafety["Azure AI Content Safety\n(PII + Jailbreak Defense)"]
+    subgraph Agent["Azure AI Foundry Agent"]
+        direction TB
+        Planner["Planner · Memory · Tool Router"]
     end
 
-    subgraph AgentOrchestrator["🤖 Agent Orchestrator (Azure AI Foundry)"]
-        Planner["Task Planner\n(Multi-step Workflow Engine)"]
-        Memory["Context & Memory Store"]
-        Router["Tool Router"]
+    subgraph Skills["Agent Skills"]
+        direction TB
+        SkillList["navigate · extract · fill · submit · Graph"]
     end
 
-    subgraph SecurityLayer["🔒 Security Boundary Layer"]
-        AuthDelegation["Auth Delegation\n(Entra ID SSO / Token Proxy)"]
-        URLAllowlist["URL Allowlisting\n(Domain & Path Rules)"]
-        ApprovalGate["Action Approval Gate\n(Human-in-the-Loop)"]
-        AuditLog["Audit Log →\nCosmos DB"]
+    subgraph Security["Zero-Trust Security Pipeline"]
+        direction TB
+        Pipeline["Entra ID → Allowlist → Content\nSafety → Approval → Audit"]
     end
 
-    subgraph ToolLayer["🛠️ Agent Skills"]
-        Navigate["navigate_page\n(URL navigation,\nclick, scroll)"]
-        Extract["extract_content\n(Read & summarize\npage data)"]
-        FillForm["fill_form\n(Input fields,\ndropdowns, dates)"]
-        Submit["submit_action\n(Buttons, approvals,\nstate transitions)"]
-        GraphSkills["Microsoft Graph\n(Teams, Outlook,\nCalendar, Files)"]
+    subgraph API["Native API Integration\n(Preferred)"]
+        direction TB
+        APIPath["REST / GraphQL · OpenAPI"]
     end
 
-    subgraph APILayer["📡 Native API Integration Layer"]
-        APIConnectors["API Connectors\n(REST / GraphQL\nDirect Integration)"]
-        SchemaDiscovery["API Schema Discovery\n(OpenAPI / Swagger\nEndpoint Detection)"]
-        ResponseNorm["Response Normalizer\n(Structured Data\nTransformation)"]
+    subgraph Observe["Observability & Intelligence"]
+        direction TB
+        ObsStack["Azure Monitor · App Insights\nFabric · Work IQ"]
     end
 
-    subgraph BrowserEngine["🌐 Browser Automation (J-browser-agents)"]
-        Headless["Headless Browser\nInstance Pool"]
-        DOMParser["DOM Parser &\nElement Selector"]
-        SessionMgr["Session & Cookie\nManager"]
+    subgraph Browser["Browser Automation\n(Fallback)"]
+        direction TB
+        BrowserPath["Playwright · DOM Parsing"]
     end
 
-    subgraph IntelligenceLayer["🧠 Microsoft Intelligence"]
-        Foundry["Microsoft Foundry\n(Agent Orchestration)"]
-        Fabric["Microsoft Fabric\n(Data Analytics +\nWorkflow Intelligence)"]
-        WorkIQ["Work IQ\n(Productivity Insights +\nViva Integration)"]
+    subgraph Apps["Enterprise & Public Web Apps"]
+        direction TB
+        AppList["ServiceNow · Jira · SEC · Portals"]
     end
 
-    subgraph TargetApps["🏢 Target Web Applications"]
-        subgraph InternalApps["Internal Enterprise Apps"]
-            ServiceNow["ServiceNow\n(ITSM / Tickets)"]
-            Jira["Jira\n(Project Tracking)"]
-            Dashboards["Internal Dashboards\n(Analytics / Reports)"]
-        end
-        subgraph PublicApps["Public / External Sites"]
-            InvestorPages["Investor Relations\n(Annual Reports, SEC)"]
-            ECommerce["E-Commerce\n(Procurement)"]
-            TravelBooking["Travel Portals\n(Booking / Expenses)"]
-        end
-    end
+    UI --> Agent
+    Agent --> Skills
+    API --> Skills
+    Browser --> Skills
+    Skills --> Security
+    Skills --> Observe
+    Security --> Apps
+    Observe --> Apps
 
-    %% User → Azure → Agent
-    Employee -->|"Natural language request"| CopilotChat
-    CopilotChat -->|"Parsed intent"| AOAI
-    AOAI -->|"Planned tasks"| Planner
-    Planner <-->|"State tracking"| Memory
-    Planner -->|"Tool calls"| Router
-    ContainerApps -.->|"Hosts runtime"| AgentOrchestrator
+    classDef blue fill:#4472C4,stroke:#2F5496,color:#FFFFFF
+    classDef lightblue fill:#5B9BD5,stroke:#2F5496,color:#FFFFFF
 
-    %% Azure services
-    EntraID -->|"Auth tokens"| AuthDelegation
-    KeyVault -->|"Secrets"| AuthDelegation
-    ContentSafety -->|"Input/output screening"| SecurityLayer
-    AuditLog -->|"Write logs"| CosmosDB
-    AppInsights -.->|"Trace spans"| AgentOrchestrator
-    AppInsights --> AzMonitor
-    CosmosDB -->|"Change feed"| Fabric
-
-    %% Router → Tools
-    Router -->|"Route to skill"| Navigate
-    Router -->|"Route to skill"| Extract
-    Router -->|"Route to skill"| FillForm
-    Router -->|"Route to skill"| Submit
-    Router -->|"Route to skill"| GraphSkills
-
-    %% Tools → Security
-    Navigate & Extract & FillForm & Submit -->|"All actions pass through"| SecurityLayer
-
-    %% Security → API / Browser
-    AuthDelegation -->|"Inject auth tokens"| Headless
-    URLAllowlist -->|"Validate target URL"| Headless
-    ApprovalGate -->|"Request user confirmation\n(destructive actions)"| Employee
-    ApprovalGate -->|"Approved action"| Headless
-    AuditLog -.->|"Log every action"| SecurityLayer
-
-    %% API integration
-    SecurityLayer -->|"Prefer API path\nwhen available"| APILayer
-    SecurityLayer -->|"Fallback: DOM automation"| Headless
-    SchemaDiscovery -->|"Discover available\nAPI endpoints"| Planner
-    APIConnectors -->|"REST/GraphQL calls"| SessionMgr
-    ResponseNorm -->|"Structured responses"| Planner
-
-    %% Browser internals
-    Headless <--> DOMParser
-    Headless <--> SessionMgr
-
-    %% Browser → Target apps
-    Headless -->|"HTTP/S"| ServiceNow
-    Headless -->|"HTTP/S"| Jira
-    Headless -->|"HTTP/S"| Dashboards
-    Headless -->|"HTTP/S"| InvestorPages
-    Headless -->|"HTTP/S"| ECommerce
-    Headless -->|"HTTP/S"| TravelBooking
-
-    %% Intelligence layer
-    Planner <-->|"Agent handoff"| Foundry
-    Fabric -->|"Workflow insights"| Planner
-    AppInsights -->|"Productivity signals"| WorkIQ
-    WorkIQ -->|"Efficiency metrics"| Fabric
-
-    %% Results back to agent
-    Extract -->|"Structured data /\nsummarized content"| Planner
-    Submit -->|"Action result"| Planner
-    Planner -->|"Final response"| CopilotChat
-    CopilotChat -->|"Answer / confirmation"| Employee
-
-    %% Styling
-    classDef userStyle fill:#E3F2FD,stroke:#1565C0,color:#0D47A1
-    classDef azureStyle fill:#E8EAF6,stroke:#283593,color:#1A237E
-    classDef agentStyle fill:#F3E5F5,stroke:#7B1FA2,color:#4A148C
-    classDef securityStyle fill:#FFEBEE,stroke:#C62828,color:#B71C1C
-    classDef toolStyle fill:#E8F5E9,stroke:#2E7D32,color:#1B5E20
-    classDef apiStyle fill:#E8EAF6,stroke:#283593,color:#1A237E
-    classDef browserStyle fill:#FFF3E0,stroke:#E65100,color:#BF360C
-    classDef intelStyle fill:#FCE4EC,stroke:#AD1457,color:#880E4F
-    classDef internalStyle fill:#F1F8E9,stroke:#558B2F,color:#33691E
-    classDef publicStyle fill:#FFF8E1,stroke:#F9A825,color:#F57F17
-
-    class Employee,CopilotChat userStyle
-    class AOAI,EntraID,ContainerApps,KeyVault,CosmosDB,AppInsights,AzMonitor,ContentSafety azureStyle
-    class Planner,Memory,Router agentStyle
-    class AuthDelegation,URLAllowlist,ApprovalGate,AuditLog securityStyle
-    class Navigate,Extract,FillForm,Submit,GraphSkills toolStyle
-    class APIConnectors,SchemaDiscovery,ResponseNorm apiStyle
-    class Headless,DOMParser,SessionMgr browserStyle
-    class Foundry,Fabric,WorkIQ intelStyle
-    class ServiceNow,Jira,Dashboards internalStyle
-    class InvestorPages,ECommerce,TravelBooking publicStyle
+    class UI,Agent,Skills,Security,API,Observe,Browser,Apps blue
+    class User,Planner,SkillList,Pipeline,APIPath,ObsStack,BrowserPath,AppList lightblue
 ```
 
 ## Layer Descriptions
