@@ -27,7 +27,7 @@ ENV PLAYWRIGHT_BROWSERS_PATH=/home/node/.cache/ms-playwright
 RUN npx playwright install chromium
 
 COPY --from=builder /app/dist ./dist
-COPY url-allowlist.txt feature-flags.txt ./
+COPY url-allowlist.txt feature-flags.txt tenant-config.json ./
 COPY frontend/ ./frontend/
 EXPOSE 3000
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s \
