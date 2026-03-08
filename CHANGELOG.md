@@ -2,6 +2,40 @@
 
 All notable changes to this project are documented in this file.
 
+## 2026-03-07
+
+### Azure Monitor OpenTelemetry
+- Added `@azure/monitor-opentelemetry` + `@opentelemetry/api` — traces, metrics, and dependency tracking to Application Insights.
+- Initialized `useAzureMonitor()` at app startup when `APPLICATIONINSIGHTS_CONNECTION_STRING` is set.
+- Added tracer spans to `/api/skills/:name` with attributes: `skill.name`, `user.id`, `session.id`, `skill.success`, `skill.path`, `skill.durationMs`.
+- Exceptions recorded on span for failed skill executions.
+
+### Dynamic CIK Resolution
+- Added `resolveCikDynamic()` to `src/api/sec-edgar-connector.ts` — queries `https://www.sec.gov/files/company_tickers.json` and `efts.sec.gov/LATEST/search-index` for unknown tickers.
+- `extractFinancialSummary()` now falls back to dynamic search for any ticker or company name (e.g., "Berkshire Hathaway").
+
+### Multi-Tenant SaaS Support
+- Added `src/security/tenant-manager.ts` — `TenantManager` class with per-tenant URL allowlists, Cosmos DB partition keys, feature toggles, concurrency limits.
+- Added `tenant-config.json` — sample config with 3 tenants (Contoso Financial Services, Northwind Technology, Adventure Works Manufacturing).
+- Added REST endpoints: `GET /api/tenants`, `GET /api/tenants/:id`, `GET /api/tenants/:id/check-url?url=...`.
+
+### Security & Operational Improvements
+- Added `SECURITY.md` — vulnerability disclosure policy, scope, safe harbor, response timeline.
+- Added `CONTRIBUTING.md` — "Adding a New Skill" extensibility guide with 5-step walkthrough and code examples.
+- Added `helmet` middleware for HTTP security headers (X-Content-Type-Options, X-Frame-Options, HSTS).
+- CORS now configurable via `CORS_ALLOWED_ORIGINS` env var (default `*` for demo, restrict in production).
+- Fixed landing page badge: 398 → 461 tests.
+- Defaulted `fabric_analytics` and `work_iq_metrics` feature flags to `true`.
+
+### Tests Added
+- `tests/unit/copilot-sdk.test.ts` — 5 tests: session creation, BYOK config, 11-tool registration, system message, cleanup.
+- `tests/e2e/server-smoke.test.ts` — 7 tests: real server start, `/health`, `/ready`, `/api/features`, `/api/workiq/*`, security gate, request correlation.
+
+### Validation
+- **56 test files, 461 tests, all passing**
+- Typecheck clean, lint clean
+- Staging deployed and verified: `/health` ✓, `/ready` ✓, `/api/workiq/benchmarks` ✓
+
 ## 2026-03-06
 
 ### AG-UI Local Demo Mode & Task Planner Improvements

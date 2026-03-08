@@ -6,6 +6,51 @@ Format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ---
 
+## 2026-03-07
+
+### Azure Monitor OpenTelemetry
+- Added **`@azure/monitor-opentelemetry`** + **`@opentelemetry/api`** — full distributed tracing, metrics, and dependency tracking to Azure Application Insights.
+- `useAzureMonitor()` initialized at app startup when `APPLICATIONINSIGHTS_CONNECTION_STRING` is configured.
+- OpenTelemetry tracer spans on `/api/skills/:skillName` with attributes: `skill.name`, `user.id`, `session.id`, `skill.success`, `skill.path`, `skill.durationMs`.
+- Exceptions automatically recorded on span for failed skill executions.
+
+### Dynamic CIK Resolution (SEC EDGAR)
+- Added **`resolveCikDynamic()`** to **`src/api/sec-edgar-connector.ts`** — queries SEC EDGAR's `company_tickers.json` and `efts.sec.gov/LATEST/search-index` for unknown tickers.
+- `extractFinancialSummary()` now falls back to dynamic search for any ticker symbol or company name (e.g., "Berkshire Hathaway", "BRK-B").
+- Eliminates the previous limitation of only 15 hardcoded ticker→CIK mappings.
+
+### Multi-Tenant SaaS Support
+- Added **`src/security/tenant-manager.ts`** — `TenantManager` class with:
+  - Per-tenant URL allowlists (which apps each tenant can access)
+  - Cosmos DB partition keys for data isolation
+  - Per-tenant feature toggles (browser automation, SEC EDGAR, Graph, Fabric)
+  - Concurrency limits per tenant
+- Added **`tenant-config.json`** — sample configuration with 3 tenants:
+  - **Contoso Financial Services** — SEC EDGAR + ServiceNow + Workday access
+  - **Northwind Technology** — GitHub + Azure + Jira + Grafana access
+  - **Adventure Works Manufacturing** — ERP + SCM systems only
+- REST API: `GET /api/tenants`, `GET /api/tenants/:id`, `GET /api/tenants/:id/check-url?url=...` (returns `{ allowed, cosmosPartitionKey }`)
+
+### Security & Operational Improvements
+- Created **`SECURITY.md`** — vulnerability disclosure policy with scope, safe harbor, and response timeline.
+- Created **`CONTRIBUTING.md`** — "Adding a New Skill" extensibility guide (5 steps with full code examples).
+- Added **`helmet`** middleware for HTTP security headers.
+- **CORS** now configurable via `CORS_ALLOWED_ORIGINS` env var.
+- Fixed landing page badge: 398 → 461 tests.
+- Defaulted `fabric_analytics` and `work_iq_metrics` feature flags to `true` for demo visibility.
+
+### Tests Added
+- **`tests/unit/copilot-sdk.test.ts`** — 5 tests: session creation, BYOK provider config, 11-tool registration verification, system message content, client cleanup.
+- **`tests/e2e/server-smoke.test.ts`** — 7 tests: real Express server start, `/health`, `/ready`, `/api/features`, `/api/workiq/benchmarks`, `/api/workiq/skill-estimates`, security gate URL blocking, `x-request-id` correlation.
+
+### Validation
+- **56 test files, 461 tests, all passing**
+- **51 source files** (added `tenant-manager.ts`, `copilot-sdk.ts`)
+- Typecheck clean, lint clean
+- Live staging deployed and verified at `browser-agent-app.delightfulforest-1a6d4031.centralus.azurecontainerapps.io`
+
+---
+
 ## 2026-03-06
 
 ### AG-UI Local Demo Mode & Task Planner Improvements

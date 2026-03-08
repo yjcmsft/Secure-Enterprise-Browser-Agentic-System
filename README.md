@@ -78,7 +78,7 @@ Industry benchmarks built into Work IQ: Financial Services, Healthcare, Manufact
 | 🚀 | **One-Command Deploy** | Bicep IaC → GitHub Actions → staging → prod in <10 min |
 | 🏢 | **Multi-Tenant SaaS** | Per-tenant URL allowlists, Cosmos DB partition isolation, tenant API |
 | 📊 | **OpenTelemetry** | Azure Monitor traces, metrics, and dependency tracking via `@azure/monitor-opentelemetry` |
-| 🧪 | **461 Tests · 92.88% Coverage** | 55 files · unit + integration + e2e |
+| 🧪 | **461 Tests · 92.88% Coverage** | 56 files · unit + integration + e2e |
 
 ---
 
@@ -215,7 +215,7 @@ curl -X POST http://localhost:3000/api/skills/compare_data \
 | Service | Role |
 |---|---|
 | **Azure AI Foundry** | Agent lifecycle, 12 function tools, thread management |
-| **[GitHub Copilot SDK](https://github.com/github/copilot-sdk)** | Alternative agent runtime, 12 custom tools, BYOK |
+| **[GitHub Copilot SDK](https://github.com/github/copilot-sdk)** | Alternative agent runtime, 11 custom tools, BYOK |
 | **Azure OpenAI** | GPT-4o for planning + generation |
 | **Entra ID** | SSO, RBAC, per-skill token delegation |
 | **Container Apps** | Auto-scaling runtime (0→20 replicas) |
@@ -223,6 +223,7 @@ curl -X POST http://localhost:3000/api/skills/compare_data \
 | **Cosmos DB** | Immutable audit trail |
 | **Content Safety** | Input/output screening, PII redaction |
 | **Graph API** | Teams, Calendar, Adaptive Cards |
+| **App Insights** | OpenTelemetry traces + metrics via `@azure/monitor-opentelemetry` |
 
 > 📖 Full details: [ARCHITECTURE.md](./ARCHITECTURE.md)
 
@@ -255,7 +256,7 @@ Request → Entra ID → URL Allowlist → Content Safety (input)
 
 ## 🧪 Test Coverage
 
-**461 tests** across 55 files · **92.88% statements** · 87.62% branches · 94.85% functions · 93.15% lines
+**461 tests** across 56 files · **92.88% statements** · 87.62% branches · 94.85% functions · 93.15% lines
 
 Browser module: 100% across all metrics. Run `npm run test:coverage` for the full report.
 
@@ -264,15 +265,15 @@ Browser module: 100% across all metrics. Run `npm run test:coverage` for the ful
 ## 📂 Repository Structure
 
 ```
-src/                          # 50 TypeScript source files
-├── index.ts                  # Express server + endpoints
+src/                          # 51 TypeScript source files
+├── index.ts                  # Express server + OpenTelemetry + endpoints
 ├── foundry-agent.ts          # Azure AI Foundry (12 function tools)
-├── copilot-sdk.ts            # GitHub Copilot SDK (12 custom tools)
+├── copilot-sdk.ts            # GitHub Copilot SDK (11 custom tools)
 ├── agui-handler.ts           # AG-UI SSE streaming + local demo mode
 ├── config.ts                 # Zod config + .env loader
 ├── skills/                   # 8 browser skills + registry
-├── security/                 # 5-layer pipeline (7 modules)
-├── api/                      # Dual-path + bot-detection + SEC EDGAR
+├── security/                 # 5-layer pipeline + tenant manager (8 modules)
+├── api/                      # Dual-path + bot-detection + SEC EDGAR + dynamic CIK
 ├── browser/                  # Playwright pool + DOM parser
 ├── graph/                    # Teams, Calendar, Cards, Work Patterns
 ├── fabric/                   # Fabric Lakehouse + Work IQ
@@ -281,7 +282,8 @@ src/                          # 50 TypeScript source files
 frontend/                     # Interactive demo UI
 infra/                        # Bicep IaC (8 modules, dev/staging/prod)
 scripts/                      # Deploy, demo, OIDC setup
-tests/                        # 461 tests across 55 files
+tests/                        # 461 tests across 56 files
+tenant-config.json            # Multi-tenant SaaS config (3 sample tenants)
 docs/adr/                     # 6 Architecture Decision Records
 app-package/                  # Azure AI Foundry agent manifest
 ```
